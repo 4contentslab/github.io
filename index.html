@@ -293,7 +293,10 @@
       user-select: none;
       transition: opacity 0.25s ease, transform 0.25s ease;
     }
-
+    /* ❷ 재생 중일 때 열림 상태 */
+    .bgm-progress-card.open {
+      display: flex !important;
+    }
     .bgm-progress-label {
       font-size: 10.5px;
       color: #ffd700;
@@ -1751,9 +1754,10 @@
       }
 
       if (!bgmAudio.paused) {
-        bgmAudio.pause();
-        bgmBtn.classList.remove('playing');
-        bgmBtnText.textContent = '배경음악';
+      bgmAudio.pause();
+      bgmBtn.classList.remove('playing');
+      bgmBtnText.textContent = '배경음악';
+      bgmProgressCard.classList.remove('open'); // 라디오 재생 시 재생 바 숨김
       }
 
       radioChannelBtns.forEach(b => b.classList.remove('active'));
@@ -1828,15 +1832,16 @@
       });
     });
 
-    radioAudio.addEventListener('play', () => {
-      if (!bgmAudio.paused) {
-        bgmAudio.pause();
-        bgmBtn.classList.remove('playing');
-        bgmBtnText.textContent = '배경음악';
-      }
-      radioLiveDot.classList.add('active');
-      radioStatusText.classList.add('active');
-    });
+  radioAudio.addEventListener('play', () => {
+  if (!bgmAudio.paused) {
+    bgmAudio.pause();
+    bgmBtn.classList.remove('playing');
+    bgmBtnText.textContent = '배경음악';
+    bgmProgressCard.classList.remove('open'); // 라디오 재생 시 재생 바 숨김
+    }
+    radioLiveDot.classList.add('active');
+    radioStatusText.classList.add('active');
+  });
 
     radioAudio.addEventListener('pause', () => {
       radioLiveDot.classList.remove('active');
@@ -1846,18 +1851,20 @@
       if (bgmAudio.paused) {
         stopRadio();
         bgmAudio.play().then(() => {
-          bgmBtn.classList.add('playing');
-          bgmBtnText.textContent = 'BGM 켜짐';
-          showToast('🎵 배경음악이 재생됩니다.');
-        }).catch(err => {
-          console.warn('BGM 재생 대기:', err);
-        });
-      } else {
+        bgmBtn.classList.add('playing');
+        bgmBtnText.textContent = 'BGM 켜짐';
+        bgmProgressCard.classList.add('open'); // 재생 바 표시
+        showToast('🎵 배경음악이 재생됩니다.');
+    }).catch(err => {
+      console.warn('BGM 재생 대기:', err);
+    });
+    } else {
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
         bgmBtnText.textContent = '배경음악';
+        bgmProgressCard.classList.remove('open'); // 재생 바 숨김
         showToast('BGM이 일시 정지되었습니다.');
-      }
+    }
     });
 
     // 라디오 토글 이벤트 등록
