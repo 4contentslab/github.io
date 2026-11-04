@@ -553,7 +553,69 @@
       z-index: 30;
       display: flex;
       flex-direction: column;
+      align-items: center;
       gap: 8px;
+      pointer-events: none; /* 토글 닫혔을 때 빈 공간 클릭 투과 */
+    }
+
+    /* 토글 스위치 버튼 */
+    .dock-toggle-btn {
+      pointer-events: auto;
+      background: rgba(16, 25, 41, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1.5px solid #ffd700;
+      color: #ffeaa7;
+      padding: 10px 22px;
+      border-radius: 28px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 215, 0, 0.3);
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+
+    .dock-toggle-btn:hover {
+      background: rgba(28, 43, 70, 0.96);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+
+    .dock-toggle-arrow {
+      font-size: 11px;
+      transition: transform 0.3s ease;
+      display: inline-block;
+    }
+
+    /* 도크 컨텐츠 래퍼 (기본 닫힘 상태) */
+    .dock-content-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transform: translateY(16px);
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                  opacity 0.28s ease, 
+                  transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    /* 열림 상태 */
+    .dock-container.open .dock-content-wrap {
+      max-height: 550px;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .dock-container.open .dock-toggle-arrow {
+      transform: rotate(180deg);
     }
 
     .tree-target-bar {
@@ -1089,6 +1151,10 @@
         width: calc(100% - 16px);
         gap: 6px;
       }
+      .dock-toggle-btn {
+        padding: 8px 18px;
+        font-size: 12.5px;
+      }
       .nickname-wrap {
         width: 85px;
         padding-right: 6px;
@@ -1099,7 +1165,7 @@
         position: absolute;
         top: 76px;
         right: 0;
-        z-index: 100 !important; /* 클릭 및 터치 우선순위 보장 */
+        z-index: 100 !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
         display: none !important;
       }
@@ -1224,63 +1290,76 @@
     </div>
   </header>
 
-  <!-- 하단 복합 입력 도크 -->
-  <div class="dock-container">
+  <!-- 하단 복합 입력 도크 (토글 접이식) -->
+  <div class="dock-container" id="dockContainer">
 
-    <div class="tree-target-bar" id="treeTargetBar">
-      <div class="tree-target-info">
-        <span>선택된 나무:</span>
-        <span class="tree-target-name" id="selectedTreeName">중앙 메인 트리 (하트)</span>
-      </div>
-      <span class="tree-target-guide">화면 속 나무를 클릭해 변경</span>
-    </div>
+    <!-- 토글 온/오프 컨트롤 버튼 -->
+    <button class="dock-toggle-btn" id="dockToggleBtn" title="소원 입력창 열기/닫기">
+      <span>✨</span>
+      <span id="dockToggleText">소원 오너먼트 달기</span>
+      <span class="dock-toggle-arrow" id="dockToggleArrow">▲</span>
+    </button>
 
-    <!-- 13종 오너먼트 선택기 -->
-    <div class="selector-wrapper">
-      <button class="scroll-arrow-btn left" id="scrollLeftBtn" title="왼쪽으로 스크롤">‹</button>
-      <div class="ornament-selector" id="ornamentSelector">
-        <span class="selector-label">오너먼트 (13종)</span>
-      </div>
-      <button class="scroll-arrow-btn right" id="scrollRightBtn" title="오른쪽으로 스크롤">›</button>
-    </div>
+    <!-- 접히고 펼쳐지는 컨텐츠 래퍼 영역 -->
+    <div class="dock-content-wrap" id="dockContentWrap">
 
-    <!-- 무지개 색상 & 명도(흑백) 선택기 -->
-    <div class="color-picker-card">
-      <div class="color-preview-bar" id="colorPreviewBar"></div>
-
-      <div class="slider-row">
-        <span class="slider-sublabel">색조</span>
-        <input type="range" min="0" max="360" value="0" class="hue-slider" id="hueSlider" title="무지개 색상 선택">
+      <!-- 나무 선택 바 -->
+      <div class="tree-target-bar" id="treeTargetBar">
+        <div class="tree-target-info">
+          <span>선택된 나무:</span>
+          <span class="tree-target-name" id="selectedTreeName">중앙 메인 트리 (하트)</span>
+        </div>
+        <span class="tree-target-guide">화면 속 나무를 클릭해 변경</span>
       </div>
 
-      <div class="slider-row">
-        <span class="slider-sublabel">명도</span>
-        <input type="range" min="0" max="100" value="50" class="lightness-slider" id="lightnessSlider" title="명도 조절 (좌: 흑색 / 중앙: 원색 / 우: 백색)">
+      <!-- 13종 오너먼트 선택기 -->
+      <div class="selector-wrapper">
+        <button class="scroll-arrow-btn left" id="scrollLeftBtn" title="왼쪽으로 스크롤">‹</button>
+        <div class="ornament-selector" id="ornamentSelector">
+          <span class="selector-label">오너먼트 (13종)</span>
+        </div>
+        <button class="scroll-arrow-btn right" id="scrollRightBtn" title="오른쪽으로 스크롤">›</button>
       </div>
 
-      <div class="color-info-row">
-        <span id="lightnessDesc">명도 50% (원색) • 0%: 흑색 / 100%: 백색</span>
-        <span class="hex-badge" id="hexText">HEX #FF0000</span>
-      </div>
-    </div>
+      <!-- 무지개 색상 & 명도(흑백) 선택기 -->
+      <div class="color-picker-card">
+        <div class="color-preview-bar" id="colorPreviewBar"></div>
 
-    <!-- 별명 + 텍스트 입력창 -->
-    <div class="input-dock">
-      <div class="nickname-wrap">
-        <input type="text" id="nicknameInput" placeholder="별명 입력" maxlength="10">
-        <span class="nickname-sub">작성자 닉네임</span>
-      </div>
+        <div class="slider-row">
+          <span class="slider-sublabel">색조</span>
+          <input type="range" min="0" max="360" value="0" class="hue-slider" id="hueSlider" title="무지개 색상 선택">
+        </div>
 
-      <div class="textarea-wrap">
-        <textarea id="wishInput" placeholder="새해 소원을 적으면 선택한 나무에 오너먼트가 걸립니다..." maxlength="300"></textarea>
-        <div class="input-meta">
-          <span id="extractedBadge">핵심 단어가 자동으로 추출됩니다</span>
-          <span id="charCount">0 / 300</span>
+        <div class="slider-row">
+          <span class="slider-sublabel">명도</span>
+          <input type="range" min="0" max="100" value="50" class="lightness-slider" id="lightnessSlider" title="명도 조절 (좌: 흑색 / 중앙: 원색 / 우: 백색)">
+        </div>
+
+        <div class="color-info-row">
+          <span id="lightnessDesc">명도 50% (원색) • 0%: 흑색 / 100%: 백색</span>
+          <span class="hex-badge" id="hexText">HEX #FF0000</span>
         </div>
       </div>
-      <button class="send-btn" id="sendBtn" title="3D 오너먼트 걸기" disabled>
-        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
+
+      <!-- 별명 + 텍스트 입력창 -->
+      <div class="input-dock">
+        <div class="nickname-wrap">
+          <input type="text" id="nicknameInput" placeholder="별명 입력" maxlength="10">
+          <span class="nickname-sub">작성자 닉네임</span>
+        </div>
+
+        <div class="textarea-wrap">
+          <textarea id="wishInput" placeholder="새해 소원을 적으면 선택한 나무에 오너먼트가 걸립니다..." maxlength="300"></textarea>
+          <div class="input-meta">
+            <span id="extractedBadge">핵심 단어가 자동으로 추출됩니다</span>
+            <span id="charCount">0 / 300</span>
+          </div>
+        </div>
+        <button class="send-btn" id="sendBtn" title="3D 오너먼트 걸기" disabled>
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+
     </div>
 
   </div>
@@ -1351,6 +1430,21 @@
     const lightnessDesc = document.getElementById('lightnessDesc');
     const radioToggleBtn = document.getElementById('radioToggleBtn');
     const radioPlayerCard = document.getElementById('radioPlayerCard');
+
+    // 도크 토글 관련 요소
+    const dockContainer = document.getElementById('dockContainer');
+    const dockToggleBtn = document.getElementById('dockToggleBtn');
+    const dockToggleText = document.getElementById('dockToggleText');
+
+    dockToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dockContainer.classList.toggle('open');
+      if (isOpen) {
+        dockToggleText.textContent = '입력창 닫기';
+      } else {
+        dockToggleText.textContent = '소원 오너먼트 달기';
+      }
+    });
 
     // 13종 오너먼트
     const ORNAMENTS = [
@@ -1474,15 +1568,11 @@
     lightnessSlider.addEventListener('input', updateColorFromSlider);
     updateColorFromSlider();
 
-    // ==========================================
-    // ❶ 1단계: MP3 Audio 객체 선언 및 시크바 연동
-    // ==========================================
-    // (index.html과 동일 폴더 기준 './musicbox.mp3' 또는 './carol.mp3')
+    // MP3 Audio 객체 선언 및 시크바 연동
     const bgmAudio = new Audio('./musicbox.mp3');
     bgmAudio.loop = true;
     bgmAudio.volume = 0.5;
 
-    // 분:초 포맷 보조 함수
     function formatTime(sec) {
       if (isNaN(sec) || !isFinite(sec)) return "0:00";
       const m = Math.floor(sec / 60);
@@ -1490,7 +1580,6 @@
       return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
-    // 노래 재생 시간에 맞춰 시크바와 시간 텍스트 업데이트
     bgmAudio.addEventListener('timeupdate', () => {
       if (!isSeeking && bgmAudio.duration) {
         const percent = (bgmAudio.currentTime / bgmAudio.duration) * 100;
@@ -1503,7 +1592,6 @@
       bgmTimeText.textContent = `0:00 / ${formatTime(bgmAudio.duration)}`;
     });
 
-    // 사용자가 시크바를 조작할 때 원하는 위치로 오디오 이동
     let isSeeking = false;
     bgmSeekBar.addEventListener('input', () => {
       isSeeking = true;
@@ -1589,9 +1677,6 @@
         return;
       }
 
-      // ==========================================
-      // ❸ 3단계: 라디오 재생 시 MP3 BGM 정지 로직
-      // ==========================================
       if (!bgmAudio.paused) {
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
@@ -1670,9 +1755,6 @@
       });
     });
 
-    // ==========================================
-    // ❸ 3단계: radioAudio 'play' 이벤트 내부의 BGM 정지
-    // ==========================================
     radioAudio.addEventListener('play', () => {
       if (!bgmAudio.paused) {
         bgmAudio.pause();
@@ -1687,15 +1769,9 @@
       radioLiveDot.classList.remove('active');
     });
 
-    // ==========================================
-    // ❷ 2단계: bgmBtn 클릭 이벤트 리스너 수정
-    // ==========================================
     bgmBtn.addEventListener('click', () => {
       if (bgmAudio.paused) {
-        // 1. 라디오가 켜져 있다면 정지
         stopRadio();
-
-        // 2. MP3 재생
         bgmAudio.play().then(() => {
           bgmBtn.classList.add('playing');
           bgmBtnText.textContent = 'BGM 켜짐';
@@ -1704,14 +1780,13 @@
           console.warn('BGM 재생 대기:', err);
         });
       } else {
-        // MP3 일시 정지
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
         bgmBtnText.textContent = '오르골 BGM';
         showToast('BGM이 일시 정지되었습니다.');
       }
     });
-    // 모바일 라디오 카드 토글 (클릭 및 터치 모두 지원 + 3D 씬 터치 전파 차단)
+
     if (radioToggleBtn && radioPlayerCard) {
       const toggleRadioCard = (e) => {
         e.preventDefault();
@@ -1722,6 +1797,7 @@
       radioToggleBtn.addEventListener('click', toggleRadioCard);
       radioToggleBtn.addEventListener('touchend', toggleRadioCard);
     }  
+
     // Three.js 씬, 카메라 & 조명
     const canvas = document.getElementById('webgl-canvas');
     const scene = new THREE.Scene();
@@ -2335,7 +2411,6 @@
       }
     }
 
-    // 터치 & 클릭 상호작용 공통 로직
     function handleInteraction(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -2343,7 +2418,6 @@
 
       raycaster.setFromCamera(mouse, camera);
 
-      // 1. 소원 오너먼트 클릭 체크
       const intersects = raycaster.intersectObjects(ornamentMeshes, true);
       if (intersects.length > 0) {
         let topGroup = intersects[0].object;
@@ -2356,7 +2430,6 @@
         }
       }
 
-      // 2. 나무 본체 클릭 체크
       const treeIntersects = raycaster.intersectObjects(treeHitMeshes, false);
       if (treeIntersects.length > 0) {
         const hitTree = treeIntersects[0].object;
@@ -2366,7 +2439,6 @@
       }
     }
 
-// PC 마우스 클릭 (라디오 버튼 및 플레이어 터치 예외 포함)
     window.addEventListener('click', (e) => {
       if (
         e.target.closest('.dock-container') || 
@@ -2380,7 +2452,6 @@
       handleInteraction(e.clientX, e.clientY);
     });
 
-    // 모바일 터치 제스처 처리 (드래그 회전과 탭 구분)
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartTime = 0;
@@ -2400,7 +2471,6 @@
         const dist = Math.hypot(endX - touchStartX, endY - touchStartY);
         const duration = Date.now() - touchStartTime;
 
-        // 이동 거리가 8px 이내이고 300ms 이내의 탭만 클릭으로 인정
         if (dist < 8 && duration < 300) {
           handleInteraction(endX, endY);
         }
@@ -2483,10 +2553,18 @@
         charCount.textContent = '0 / 300';
         extractedBadge.textContent = '핵심 단어가 자동으로 추출됩니다';
         showToast(`${TREES_CONFIG[targetTree].name}에 소원이 걸렸습니다! ⭐`);
+
+        // 소원 작성 완료 후 도크 닫기
+        dockContainer.classList.remove('open');
+        dockToggleText.textContent = '소원 오너먼트 달기';
       } catch (err) {
         console.error('Firebase 저장 실패 (로컬 모드):', err);
         addWishOrnament('local-' + Date.now(), wishData);
         showToast('오너먼트가 트리에 걸렸습니다! (로컬 모드)');
+
+        // 로컬 모드에서도 작성 후 도크 닫기
+        dockContainer.classList.remove('open');
+        dockToggleText.textContent = '소원 오너먼트 달기';
       } finally {
         sendBtn.disabled = false;
       }
