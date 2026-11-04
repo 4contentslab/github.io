@@ -2,298 +2,2505 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>제미나이 캔버스 완전정복 4지선다 퀴즈</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>우리들의 3D 소원 숲 (3D Metaverse Wish Forest)</title>
+  
+  <!-- Three.js & OrbitControls CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Firebase SDK (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- 실시간 라이브 스트리밍 재생을 위한 hls.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     body {
-      font-family: 'Pretendard', sans-serif;
+      background-color: #0c1524;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      color: #f0f4f8;
+      position: relative;
+    }
+
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      z-index: 1;
+    }
+
+    /* 좌측 상단 실시간 네온사인 전광판 */
+    .neon-board-container {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 40;
+      width: 320px;
+      background: rgba(8, 15, 28, 0.9);
+      backdrop-filter: blur(14px);
+      border: 1.5px solid #00f0ff;
+      border-radius: 18px;
+      padding: 10px 14px 12px;
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.35), inset 0 0 12px rgba(0, 240, 255, 0.12);
+      user-select: none;
+    }
+
+    .neon-board-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.25);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    .neon-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ff0055;
+      box-shadow: 0 0 8px #ff0055;
+      animation: neonBlink 1s infinite alternate;
+    }
+
+    @keyframes neonBlink {
+      0% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+
+    .neon-ticker-viewport {
+      height: 224px;
+      overflow: hidden;
+      position: relative;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+    }
+
+    .neon-ticker-track {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: neonScrollDown 30s linear infinite;
+    }
+
+    .neon-ticker-viewport:hover .neon-ticker-track {
+      animation-play-state: paused;
+    }
+
+    @keyframes neonScrollDown {
+      0% { transform: translateY(-50%); }
+      100% { transform: translateY(0%); }
+    }
+
+    .neon-item {
+      height: 26px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      padding: 0 4px;
+      border-radius: 6px;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .neon-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateX(4px);
+    }
+
+    .neon-date {
+      font-size: 10px;
+      color: #64748b;
+      font-family: ui-monospace, monospace;
+      flex-shrink: 0;
+    }
+
+    .neon-nick {
+      font-weight: 700;
+      color: #ffeaa7;
+      text-shadow: 0 0 6px rgba(255, 234, 167, 0.35);
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    .neon-kw {
+      font-weight: 800;
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 8px;
+      border: 1px solid;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    /* 우측 상단 컨트롤 레이아웃 */
+    .top-controls {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .top-controls-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .snow-control-card {
+      background: rgba(16, 25, 41, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(180, 215, 255, 0.28);
+      color: #e2e8f0;
+      padding: 6px 14px 7px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      user-select: none;
+    }
+
+    .snow-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      color: #dbeafe;
+    }
+
+    .snow-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 85px;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+      background: linear-gradient(to right, rgba(255, 255, 255, 0.25) 0%, #74b9ff 50%, #ffffff 100%);
+      cursor: pointer;
+    }
+
+    .snow-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #e2f1ff;
+      border: 2px solid #3867d6;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .bgm-btn {
+      background: rgba(16, 25, 41, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 235, 167, 0.28);
+      color: #ffeaa7;
+      padding: 8px 14px;
+      border-radius: 24px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      transition: all 0.25s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .bgm-btn:hover {
+      background: rgba(26, 40, 66, 0.95);
+      border-color: #ffd700;
+      transform: translateY(-2px);
+    }
+
+    .bgm-btn.playing {
+      border-color: #ffd700;
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+    }
+
+    .music-note-icon {
+      display: inline-block;
+      font-size: 13px;
+    }
+
+    .bgm-btn.playing .music-note-icon {
+      animation: noteBounce 1.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes noteBounce {
+      0% { transform: scale(1) rotate(-5deg); }
+      100% { transform: scale(1.25) rotate(10deg); }
+    }
+
+    /* BGM 전용 탐색 바 (시크바) 미니 카드 */
+    .bgm-progress-card {
+      width: 300px;
+      background: rgba(13, 22, 38, 0.92);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 215, 0, 0.22);
+      border-radius: 14px;
+      padding: 6px 12px 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      user-select: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .bgm-progress-label {
+      font-size: 10.5px;
+      color: #ffd700;
+      font-weight: 700;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bgm-seek-bar {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .bgm-seek-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffd700;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 6px rgba(255, 215, 0, 0.8);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .bgm-seek-bar::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .bgm-time-text {
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #cbd5e1;
+      min-width: 65px;
+      text-align: right;
+    }
+
+    /* 오르골 밑 3행 한국 실시간 라디오 플레이어 카드 */
+    .radio-player-card {
+      width: 300px;
+      background: rgba(13, 22, 38, 0.94);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 235, 167, 0.3);
+      border-radius: 18px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      user-select: none;
+    }
+
+    .radio-audio-bar-wrap {
+      width: 100%;
+      margin-top: 3px;
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .radio-audio-controls {
+      width: 100%;
+      height: 36px;
+      outline: none;
+    }
+
+    .radio-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 5px;
+      margin-bottom: 2px;
+    }
+
+    .radio-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .radio-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: all 0.3s ease;
+    }
+
+    .radio-live-dot.active {
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: radioPulse 1.2s infinite alternate;
+    }
+
+    @keyframes radioPulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1.25); }
+    }
+
+    .radio-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #ffeaa7;
+      letter-spacing: -0.3px;
+    }
+
+    .radio-status {
+      font-size: 10.5px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .radio-status.active {
+      color: #38bdf8;
+      text-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+    }
+
+    .radio-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .radio-channel-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 6px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #cbd5e1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .radio-channel-btn:hover {
+      background: rgba(255, 255, 255, 0.13);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .radio-channel-btn.active {
+      background: rgba(34, 197, 94, 0.22);
+      border-color: #22c55e;
+      color: #86efac;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+    }
+
+    .stn-badge {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 4px;
+      letter-spacing: 0.2px;
+    }
+
+    .stn-badge.kbs {
+      background: #1d4ed8;
+      color: #eff6ff;
+    }
+
+    .stn-badge.mbc {
+      background: #0284c7;
+      color: #f0f9ff;
+    }
+
+    .stn-badge.sbs {
+      background: #059669;
+      color: #ecfdf5;
+    }
+
+    /* 중앙 상단 헤더 */
+    header {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 10;
+      pointer-events: none;
+      width: calc(100% - 32px);
+      max-width: 580px;
+    }
+
+    header h1 {
+      font-size: 23px;
+      font-weight: 700;
+      color: #fdfbf7;
+      text-shadow: 0 0 18px rgba(255, 235, 167, 0.7);
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 4px;
+      font-size: 12.5px;
+      color: #a4bdd6;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .forest-stats {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+      background: rgba(14, 22, 36, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 11px;
+      color: #ffeaa7;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    /* 마우스 호버 라벨 */
+    #hoverLabel {
+      position: absolute;
+      z-index: 20;
+      background: rgba(14, 21, 35, 0.94);
+      border: 1.5px solid #ffd700;
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      pointer-events: none;
+      transform: translate(-50%, -130%);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+      white-space: nowrap;
+    }
+
+    /* 하단 메인 도크 */
+    .dock-container {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 24px);
+      max-width: 660px;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tree-target-bar {
+      background: rgba(14, 22, 36, 0.92);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      border-radius: 16px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #f1f5f9;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    .tree-target-info {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tree-target-name {
+      color: #ffd700;
+      font-weight: 700;
+    }
+
+    .tree-target-guide {
+      font-size: 11px;
+      color: #9cb3c9;
+    }
+
+    /* 13종 오너먼트 가로 선택기 */
+    .selector-wrapper {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .scroll-arrow-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(22, 33, 52, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #ffeaa7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: absolute;
+      z-index: 5;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      user-select: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    }
+    .scroll-arrow-btn:hover {
+      background: #ffd700;
+      color: #111;
+      transform: scale(1.1);
+    }
+    .scroll-arrow-btn.left { left: 4px; }
+    .scroll-arrow-btn.right { right: 4px; }
+
+    .ornament-selector {
+      width: 100%;
+      background: rgba(14, 22, 36, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 20px;
+      padding: 7px 38px 9px 38px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      scroll-behavior: smooth;
+    }
+    .ornament-selector.grabbing {
+      cursor: grabbing;
+      scroll-behavior: auto;
+    }
+    .ornament-selector::-webkit-scrollbar {
+      height: 4px;
+    }
+    .ornament-selector::-webkit-scrollbar-thumb {
+      background: rgba(255, 215, 0, 0.35);
+      border-radius: 2px;
+    }
+
+    .selector-label {
+      font-size: 11px;
+      color: #9cb3c9;
+      font-weight: 700;
+      white-space: nowrap;
+      padding-right: 6px;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+
+    .ornament-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 5px 11px;
+      font-size: 12px;
+      color: #e2e8f0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .ornament-chip:hover {
+      background: rgba(255, 255, 255, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .ornament-chip.active {
+      background: rgba(226, 166, 59, 0.25);
+      border-color: #ffd700;
+      color: #ffd700;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
+    }
+
+    /* 무지개 스펙트럼 색상 및 명도(흑백) 선택기 */
+    .color-picker-card {
+      background: rgba(14, 22, 36, 0.94);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 9px 16px 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .color-preview-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ff0000;
+      transition: background 0.1s linear;
+      box-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+    }
+
+    .slider-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .slider-sublabel {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      width: 24px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .hue-slider, .lightness-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 10px;
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .hue-slider {
+      background: linear-gradient(to right, 
+        #ff0000 0%, 
+        #ff7f00 14%, 
+        #ffff00 28%, 
+        #00ff00 42%, 
+        #00ffff 57%, 
+        #0077ff 71%, 
+        #8b00ff 85%, 
+        #ff007f 93%, 
+        #ff0000 100%
+      );
+    }
+
+    .lightness-slider {
+      background: linear-gradient(to right, #000000 0%, #ff0000 50%, #ffffff 100%);
+    }
+
+    .hue-slider::-webkit-slider-thumb, .lightness-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .hue-slider::-webkit-slider-thumb:hover, .lightness-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .hue-slider::-moz-range-thumb, .lightness-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+      cursor: pointer;
+    }
+
+    .color-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #9cb3c9;
+      padding: 0 2px;
+    }
+
+    .hex-badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      color: #f7fafc;
+      letter-spacing: 0.5px;
+    }
+
+    /* 별명 + 소원 입력 도크 */
+    .input-dock {
+      background: rgba(16, 25, 41, 0.94);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 10px 14px 10px 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .nickname-wrap {
+      width: 120px;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+      padding-right: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nickname-wrap input {
+      width: 100%;
+      height: 26px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffeaa7;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .nickname-wrap input::placeholder {
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .nickname-sub {
+      font-size: 10.5px;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    .textarea-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-dock textarea {
+      width: 100%;
+      height: 26px;
+      max-height: 120px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f7fafc;
+      font-size: 14.5px;
+      line-height: 1.45;
+      resize: none;
+    }
+
+    .input-dock textarea::placeholder {
+      color: #72849a;
+    }
+
+    .input-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #6d8096;
+    }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #e2a63b;
+      border: none;
+      color: #101620;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      background: #f7bb4d;
+      transform: scale(1.05);
+    }
+
+    .send-btn:disabled {
+      background: #313d4e;
+      color: #5e6f82;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .send-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* 소원 상세 모달 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(3, 7, 16, 0.78);
+      backdrop-filter: blur(8px);
+      z-index: 60;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 410px;
+      border-radius: 22px;
+      padding: 26px;
+      position: relative;
+      box-shadow: 0 24px 55px rgba(0, 0, 0, 0.75);
+      animation: pop 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      background: #182234;
+      color: #ffffff;
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .modal-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 800;
+      font-size: 13.5px;
+      padding: 5px 14px;
+      border-radius: 16px;
+      background: #ffffff;
+      color: #0d1522 !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      letter-spacing: -0.3px;
+    }
+
+    .modal-badge-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ffd700;
+      display: inline-block;
+    }
+
+    .modal-shape-tag {
+      font-size: 12.5px;
+      color: #ffeaa7;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
+
+    .modal-author-tag {
+      font-size: 12px;
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    .modal-tree-tag {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+
+    .modal-text {
+      font-size: 15.5px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #f8fafc;
+      padding: 6px 0;
+    }
+
+    .modal-date {
+      margin-top: 16px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      text-align: right;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      transition: background 0.2s;
+    }
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* 토스트 알림 */
+    .toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(16, 25, 41, 0.96);
+      border: 1px solid #ffd700;
+      color: #ffeaa7;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      z-index: 100;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .neon-board-container {
+        display: none;
+      }
+      .top-controls {
+        top: 10px;
+        right: 10px;
+        gap: 6px;
+      }
+      .snow-control-card {
+        padding: 5px 10px;
+        gap: 6px;
+      }
+      .snow-slider {
+        width: 60px;
+      }
+      .bgm-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+      .bgm-progress-card {
+        width: 240px;
+        padding: 5px 8px;
+      }
+      header {
+        top: 54px;
+      }
+      header h1 {
+        font-size: 18px;
+      }
+      .dock-container {
+        bottom: 10px;
+        width: calc(100% - 16px);
+        gap: 6px;
+      }
+      .nickname-wrap {
+        width: 85px;
+        padding-right: 6px;
+      }
+      .radio-player-card {
+        width: 240px;
+        padding: 7px 10px;
+      }
+      .radio-channel-btn {
+        font-size: 10px;
+        padding: 5px 4px;
+      }
+      .stn-badge {
+        font-size: 8px;
+      }
+      
+      .scroll-arrow-btn { display: none; }
+      .ornament-selector { padding: 6px 12px 8px 12px; }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+<body>
 
-  <!-- 헤더 영역 -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-    <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-lg">
-          C
-        </span>
-        <h1 class="text-lg font-bold text-slate-900 tracking-tight">제미나이 캔버스 마스터 퀴즈</h1>
-      </div>
-      <div class="text-sm font-medium text-slate-500" id="progress-indicator">
-        문제 1 / 5
-      </div>
+  <canvas id="webgl-canvas"></canvas>
+  <div id="hoverLabel">#소원</div>
+
+  <!-- 좌측 상단 실시간 네온사인 전광판 -->
+  <div class="neon-board-container">
+    <div class="neon-board-title">
+      <span class="neon-live-dot"></span>
+      <span>LIVE WISH TICKER (최근 15개)</span>
     </div>
-  </header>
-
-  <!-- 메인 퀴즈 컨테이너 -->
-  <main class="max-w-2xl mx-auto px-4 py-8 flex-1 w-full">
-    
-    <!-- 프로그레스 바 -->
-    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-6 overflow-hidden">
-      <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 20%"></div>
-    </div>
-
-    <!-- 퀴즈 카드 -->
-    <div id="quiz-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-      <!-- 질문 번호 및 카테고리 태그 -->
-      <div class="flex items-center gap-2 mb-3">
-        <span id="badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
-          핵심 인터페이스
-        </span>
-      </div>
-
-      <!-- 문제 본문 -->
-      <h2 id="question-text" class="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-6">
-        문제가 이곳에 표시됩니다.
-      </h2>
-
-      <!-- 보기 목록 -->
-      <div id="options-container" class="space-y-3 mb-6">
-        <!-- 동적으로 보기 버튼 생성 -->
-      </div>
-
-      <!-- 해설 박스 (답변 선택 후 표시) -->
-      <div id="feedback-box" class="hidden rounded-xl p-4 mb-6 border transition-all duration-200">
-        <div class="flex items-start gap-3">
-          <i id="feedback-icon" class="text-lg mt-0.5"></i>
-          <div>
-            <h4 id="feedback-title" class="font-bold text-sm mb-1"></h4>
-            <p id="feedback-desc" class="text-sm text-slate-600 leading-relaxed"></p>
-          </div>
+    <div class="neon-ticker-viewport">
+      <div class="neon-ticker-track" id="neonTickerTrack">
+        <div class="neon-item">
+          <span class="neon-date">숲을 불러오는 중...</span>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- 다음 버튼 -->
-      <button id="next-btn" class="hidden w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold rounded-xl transition duration-150 flex items-center justify-center gap-2 shadow-sm">
-        <span>다음 문제로 넘어가기</span>
-        <i class="fa-solid fa-arrow-right text-sm"></i>
+  <!-- 우측 상단 컨트롤 (눈 조절기 + BGM 버튼 + MP3 탐색 바 + 라디오 플레이어) -->
+  <div class="top-controls">
+    <div class="top-controls-row">
+      <div class="snow-control-card" title="눈송이 양 조절">
+        <span class="snow-label">❄️ 눈 내림</span>
+        <input type="range" min="300" max="4500" step="100" value="2000" class="snow-slider" id="snowSlider">
+      </div>
+
+      <button class="bgm-btn" id="bgmBtn" title="오르골 MP3 음악 켜기/끄기">
+        <span class="music-note-icon">🎵</span>
+        <span id="bgmBtnText">오르골 BGM</span>
       </button>
     </div>
 
-    <!-- 결과 화면 (마지막 문제 완료 후 표시) -->
-    <div id="result-card" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
-      <div class="w-20 h-20 mx-auto rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-3xl mb-4">
-        <i class="fa-solid fa-award"></i>
-      </div>
-      <h2 class="text-2xl font-bold text-slate-900 mb-2">퀴즈 완료!</h2>
-      <p class="text-slate-500 mb-6" id="result-message">수고하셨습니다. 학습 결과를 확인해보세요.</p>
-      
-      <div class="bg-slate-50 rounded-xl p-6 border border-slate-100 mb-8 max-w-sm mx-auto">
-        <div class="text-sm text-slate-500 mb-1">최종 점수</div>
-        <div class="text-4xl font-extrabold text-blue-600" id="final-score">0 / 5</div>
-        <div class="text-xs text-slate-400 mt-2" id="score-percent">정답률 0%</div>
+    <!-- 오르골 BGM 곡 위치 탐색 바 (시크바) -->
+    <div class="bgm-progress-card" id="bgmProgressCard">
+      <span class="bgm-progress-label">🎼 재생 바</span>
+      <input type="range" min="0" max="100" value="0" step="0.1" class="bgm-seek-bar" id="bgmSeekBar" title="원하는 위치로 이동">
+      <span class="bgm-time-text" id="bgmTimeText">0:00 / 0:00</span>
+    </div>
+
+    <!-- 오르골 밑 한국 실시간 라디오 플레이어 -->
+    <div class="radio-player-card" id="radioPlayerCard">
+      <div class="radio-card-header">
+        <div class="radio-title-wrap">
+          <span class="radio-live-dot" id="radioLiveDot"></span>
+          <span class="radio-title">📻 실시간 라디오</span>
+        </div>
+        <span class="radio-status" id="radioStatusText">채널을 선택하세요</span>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <button id="retry-btn" class="py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-rotate-right text-sm"></i>
-          <span>다시 도전하기</span>
+      <!-- 1행: KBS -->
+      <div class="radio-row">
+        <button class="radio-channel-btn" data-channel="kbs2radio" data-name="KBS 2라디오">
+          <span class="stn-badge kbs">KBS</span> 2라디오
         </button>
+        <button class="radio-channel-btn" data-channel="kbs2fm" data-name="KBS 2FM">
+          <span class="stn-badge kbs">KBS</span> 2FM (쿨FM)
+        </button>
+      </div>
+
+      <!-- 2행: MBC -->
+      <div class="radio-row">
+        <button class="radio-channel-btn" data-channel="mbcsfm" data-name="MBC 표준FM">
+          <span class="stn-badge mbc">MBC</span> 표준FM
+        </button>
+        <button class="radio-channel-btn" data-channel="mbcfm4u" data-name="MBC FM4U">
+          <span class="stn-badge mbc">MBC</span> FM4U
+        </button>
+      </div>
+
+      <!-- 3행: SBS -->
+      <div class="radio-row">
+        <button class="radio-channel-btn" data-channel="sbspowerfm" data-name="SBS 파워FM">
+          <span class="stn-badge sbs">SBS</span> 파워FM
+        </button>
+        <button class="radio-channel-btn" data-channel="sbsdmb" data-name="SBS 고릴라M">
+          <span class="stn-badge sbs">SBS</span> 고릴라M
+        </button>
+      </div>
+
+      <!-- 브라우저 표준 플레이바 -->
+      <div class="radio-audio-bar-wrap">
+        <audio id="radioAudio" controls preload="none" class="radio-audio-controls"></audio>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <h1>3D 메타버스 소원 숲</h1>
+    <p>화면의 나무를 직접 클릭해 원하는 곳에 소원을 걸어보세요</p>
+    <div class="forest-stats">
+      <span id="forestTotalCount">🌲 총 소원: 0 / 600개</span>
+      <span>•</span>
+      <span>나무당 최대 150개</span>
+    </div>
+  </header>
+
+  <!-- 하단 복합 입력 도크 -->
+  <div class="dock-container">
+
+    <div class="tree-target-bar" id="treeTargetBar">
+      <div class="tree-target-info">
+        <span>선택된 나무:</span>
+        <span class="tree-target-name" id="selectedTreeName">중앙 메인 트리 (하트)</span>
+      </div>
+      <span class="tree-target-guide">화면 속 나무를 클릭해 변경</span>
+    </div>
+
+    <!-- 13종 오너먼트 선택기 -->
+    <div class="selector-wrapper">
+      <button class="scroll-arrow-btn left" id="scrollLeftBtn" title="왼쪽으로 스크롤">‹</button>
+      <div class="ornament-selector" id="ornamentSelector">
+        <span class="selector-label">오너먼트 (13종)</span>
+      </div>
+      <button class="scroll-arrow-btn right" id="scrollRightBtn" title="오른쪽으로 스크롤">›</button>
+    </div>
+
+    <!-- 무지개 색상 & 명도(흑백) 선택기 -->
+    <div class="color-picker-card">
+      <div class="color-preview-bar" id="colorPreviewBar"></div>
+
+      <div class="slider-row">
+        <span class="slider-sublabel">색조</span>
+        <input type="range" min="0" max="360" value="0" class="hue-slider" id="hueSlider" title="무지개 색상 선택">
+      </div>
+
+      <div class="slider-row">
+        <span class="slider-sublabel">명도</span>
+        <input type="range" min="0" max="100" value="50" class="lightness-slider" id="lightnessSlider" title="명도 조절 (좌: 흑색 / 중앙: 원색 / 우: 백색)">
+      </div>
+
+      <div class="color-info-row">
+        <span id="lightnessDesc">명도 50% (원색) • 0%: 흑색 / 100%: 백색</span>
+        <span class="hex-badge" id="hexText">HEX #FF0000</span>
       </div>
     </div>
 
-  </main>
+    <!-- 별명 + 텍스트 입력창 -->
+    <div class="input-dock">
+      <div class="nickname-wrap">
+        <input type="text" id="nicknameInput" placeholder="별명 입력" maxlength="10">
+        <span class="nickname-sub">작성자 닉네임</span>
+      </div>
 
-  <!-- 푸터 -->
-  <footer class="text-center py-6 text-xs text-slate-400 border-t border-slate-200 bg-white">
-    제미나이 캔버스 가이드북 실전 학습용 웹페이지
-  </footer>
+      <div class="textarea-wrap">
+        <textarea id="wishInput" placeholder="새해 소원을 적으면 선택한 나무에 오너먼트가 걸립니다..." maxlength="300"></textarea>
+        <div class="input-meta">
+          <span id="extractedBadge">핵심 단어가 자동으로 추출됩니다</span>
+          <span id="charCount">0 / 300</span>
+        </div>
+      </div>
+      <button class="send-btn" id="sendBtn" title="3D 오너먼트 걸기" disabled>
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- 소원 읽기 모달 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-card" id="modalCard">
+      <button class="close-btn" id="closeBtn">&times;</button>
+      <div class="modal-header-row">
+        <div class="modal-badge" id="modalBadge">
+          <span class="modal-badge-dot" id="modalBadgeDot"></span>
+          <span id="modalBadgeText">#소원</span>
+        </div>
+        <div class="modal-shape-tag" id="modalShapeTag">⭐ 별 오너먼트</div>
+        <div class="modal-author-tag" id="modalAuthorTag">작성자: 익명의 별</div>
+        <div class="modal-tree-tag" id="modalTreeTag">중앙 메인 트리</div>
+      </div>
+      <div class="modal-text" id="modalText">소원 내용이 들어갑니다.</div>
+      <div class="modal-date" id="modalDate">2026. 11. 4</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">3D 트리에 새 오너먼트가 걸렸습니다! ⭐</div>
 
   <script>
-    const quizData = [
-      {
-        category: "기본 화면 구조",
-        question: "구글 제미나이 캔버스의 실제 기본 화면 구성으로 가장 올바른 설명은 무엇일까요?",
-        options: [
-          "왼쪽에는 영구 타임라인 히스토리 창이 있고, 오른쪽에는 고정 퀴즈 변환 바가 있다.",
-          "넓은 메인 문서 에디터 창과 하단의 토글형 플로팅 대화창으로 심플하게 구성되어 있다.",
-          "화면 상단에 고정된 스마트 서식 툴바와 AI 문체 분석 패널이 항상 떠 있다.",
-          "단독 창이 아닌 기존 채팅창 속에 작은 메모장 위젯 형태로만 제공된다."
-        ],
-        answer: 1,
-        explanation: "제미나이 캔버스는 불필요한 고정 툴바 대신 넓은 전체 메인 에디터와 하단의 간결한 플로팅 프롬프트 바(토글형 Chat)로 군더더기 없이 심플하게 구성되어 있습니다."
-      },
-      {
-        category: "워크스페이스 연동",
-        question: "캔버스에서 작성한 문서를 내 구글 드라이브(Google Docs)로 바로 저장하고 싶을 때 올바른 경로는?",
-        options: [
-          "상단 우측 [공유 및 내보내기] 메뉴 ➔ [Docs로 내보내기] 클릭",
-          "하단 프롬프트에 '드라이브 파일 다운로드' 명령어 직접 코딩",
-          "좌측 하단 히스토리 메뉴에서 저장 버튼 찾기",
-          "브라우저의 인쇄 메뉴를 열어 PDF로 변환 후 드라이브에 수동 업로드"
-        ],
-        answer: 0,
-        explanation: "우측 상단에 위치한 [공유 및 내보내기(Share & Export)] 버튼을 누르면 나타나는 드롭다운 메뉴에서 [Docs로 내보내기]를 클릭하면 즉시 연동됩니다."
-      },
-      {
-        category: "실시간 프리뷰 (Live Preview)",
-        question: "일반 텍스트를 작성 중일 때 [Code | Preview] 탭이 보이지 않는 이유는 무엇일까요?",
-        options: [
-          "유료 플랜을 구독하지 않으면 프리뷰 기능이 비활성화되기 때문",
-          "상단 설정 메뉴에서 개발자 모드를 켜지 않았기 때문",
-          "코드가 생성되지 않은 일반 문서 모드이며, 웹/퀴즈 변환을 요청해야 코드 모드로 전환되기 때문",
-          "구글 크롬 브라우저가 아닌 다른 브라우저를 쓰고 있기 때문"
-        ],
-        answer: 2,
-        explanation: "프리뷰 탭은 항상 고정 노출되는 것이 아니라, 하단 대화창을 통해 웹페이지나 인터랙티브 앱(HTML/JS) 생성을 요청하여 코드 모드로 전환되었을 때 상단에 활성화됩니다."
-      },
-      {
-        category: "인라인 편집 팝업",
-        question: "캔버스 본문에서 특정 문장이나 문단을 마우스로 드래그했을 때 나타나는 팝업 도구의 기능은?",
-        options: [
-          "자동으로 컴퓨터 음성 녹음을 시작하는 보이스 레코더",
-          "드래그한 부분만 콕 집어 지시하는 [제미나이에게 물어보기]와 메모 피드백을 주는 [수정 제안]",
-          "글꼴 크기와 폰트 색상을 변경하는 워드 프로세서 서식 바",
-          "문서 전체를 즉시 삭제하고 초기화하는 휴지통 도구"
-        ],
-        answer: 1,
-        explanation: "마우스로 드래그하면 화면에 플로팅 팝업이 나타나 해당 문장만 특정 어투로 교정하거나, 제3자 검토자처럼 메모 형태의 피드백을 남기는 [수정 제안] 기능을 사용할 수 있습니다."
-      },
-      {
-        category: "실전 블로그 루틴",
-        question: "블로그 작업 시간을 획기적으로 줄여주는 실전 3단계 워크플로우로 본문에서 추천한 순서는?",
-        options: [
-          "글자 수 카운트 ➔ 이미지 수집 ➔ 타사 번역기로 문체 교정",
-          "HTML 코드 작성 ➔ 구글 슬라이드 변환 ➔ 팟캐스트 오디오 녹음",
-          "메인 캔버스 뼈대 초안 ➔ @내-블로그-문체 스킬 일괄 적용 ➔ 맞춤법 교정 및 글자 수 확인 후 Docs 내보내기",
-          "외부 맞춤법 검사기 복사 ➔ 수동 오탈자 교정 ➔ 메모장에 저장"
-        ],
-        answer: 2,
-        explanation: "정보성 뼈대 초안을 먼저 생성한 뒤 사전 등록한 문체 스킬(@스킬)로 톤앤매너를 일괄 바꾸고, 맞춤법/글자 수 검수를 한 번에 끝내는 것이 가장 효율적인 실전 루틴입니다."
-      }
+    // Firebase 설정
+    const firebaseConfig = {
+      databaseURL: "https://our-wish-tree-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const wishesRef = db.ref('wishes');
+
+    // UI 요소
+    const nicknameInput = document.getElementById('nicknameInput');
+    const wishInput = document.getElementById('wishInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const charCount = document.getElementById('charCount');
+    const extractedBadge = document.getElementById('extractedBadge');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalCard = document.getElementById('modalCard');
+    const modalBadgeDot = document.getElementById('modalBadgeDot');
+    const modalBadgeText = document.getElementById('modalBadgeText');
+    const modalShapeTag = document.getElementById('modalShapeTag');
+    const modalAuthorTag = document.getElementById('modalAuthorTag');
+    const modalTreeTag = document.getElementById('modalTreeTag');
+    const modalText = document.getElementById('modalText');
+    const modalDate = document.getElementById('modalDate');
+    const closeBtn = document.getElementById('closeBtn');
+    const toast = document.getElementById('toast');
+    const hoverLabel = document.getElementById('hoverLabel');
+    const bgmBtn = document.getElementById('bgmBtn');
+    const bgmBtnText = document.getElementById('bgmBtnText');
+    const bgmSeekBar = document.getElementById('bgmSeekBar');
+    const bgmTimeText = document.getElementById('bgmTimeText');
+    const ornamentSelector = document.getElementById('ornamentSelector');
+    const scrollLeftBtn = document.getElementById('scrollLeftBtn');
+    const scrollRightBtn = document.getElementById('scrollRightBtn');
+    const hueSlider = document.getElementById('hueSlider');
+    const colorPreviewBar = document.getElementById('colorPreviewBar');
+    const hexText = document.getElementById('hexText');
+    const forestTotalCount = document.getElementById('forestTotalCount');
+    const selectedTreeName = document.getElementById('selectedTreeName');
+    const snowSlider = document.getElementById('snowSlider');
+    const neonTickerTrack = document.getElementById('neonTickerTrack');
+    const lightnessSlider = document.getElementById('lightnessSlider');
+    const lightnessDesc = document.getElementById('lightnessDesc');
+
+    // 13종 오너먼트
+    const ORNAMENTS = [
+      { id: 'star',       name: '별',          icon: '⭐' },
+      { id: 'snowman',    name: '눈사람',      icon: '⛄' },
+      { id: 'candycane',  name: '지팡이 사탕', icon: '🦯' },
+      { id: 'snowflake',  name: '눈꽃송이',    icon: '❄️' },
+      { id: 'bell',       name: '종',          icon: '🔔' },
+      { id: 'gift',       name: '선물상자',    icon: '🎁' },
+      { id: 'heart',      name: '하트',        icon: '💖' },
+      { id: 'moon',       name: '초승달',      icon: '🌙' },
+      { id: 'diamond',    name: '보석',        icon: '💎' },
+      { id: 'santahat',   name: '산타모자',    icon: '🎅' },
+      { id: 'gingerbread',name: '진저맨',      icon: '🍪' },
+      { id: 'ribbon',     name: '리본',        icon: '🎀' },
+      { id: 'ball',       name: '구슬 볼',     icon: '🔮' }
     ];
 
-    let currentQuestionIndex = 0;
-    let score = 0;
-    let answered = false;
+    let selectedShape = 'star';
+    let selectedHex = '#FF0000';
+    let selectedTreeIndex = 0;
+    const latestWishesList = [];
 
-    // DOM 요소
-    const questionText = document.getElementById("question-text");
-    const optionsContainer = document.getElementById("options-container");
-    const progressIndicator = document.getElementById("progress-indicator");
-    const progressBar = document.getElementById("progress-bar");
-    const badge = document.getElementById("badge");
-    const feedbackBox = document.getElementById("feedback-box");
-    const feedbackIcon = document.getElementById("feedback-icon");
-    const feedbackTitle = document.getElementById("feedback-title");
-    const feedbackDesc = document.getElementById("feedback-desc");
-    const nextBtn = document.getElementById("next-btn");
-    const quizCard = document.getElementById("quiz-card");
-    const resultCard = document.getElementById("result-card");
-    const finalScore = document.getElementById("final-score");
-    const scorePercent = document.getElementById("score-percent");
-    const resultMessage = document.getElementById("result-message");
-    const retryBtn = document.getElementById("retry-btn");
+    ORNAMENTS.forEach(item => {
+      const chip = document.createElement('div');
+      chip.className = `ornament-chip ${item.id === selectedShape ? 'active' : ''}`;
+      chip.dataset.id = item.id;
+      chip.innerHTML = `<span>${item.icon}</span><span>${item.name}</span>`;
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.ornament-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedShape = item.id;
+      });
+      ornamentSelector.appendChild(chip);
+    });
 
-    function loadQuestion() {
-      answered = false;
-      feedbackBox.classList.add("hidden");
-      nextBtn.classList.add("hidden");
+    // 드래그 & 휠 스크롤
+    let isDown = false;
+    let startX = 0;
+    let scrollStart = 0;
 
-      const current = quizData[currentQuestionIndex];
-      questionText.textContent = `${currentQuestionIndex + 1}. ${current.question}`;
-      badge.textContent = current.category;
-      progressIndicator.textContent = `문제 ${currentQuestionIndex + 1} / ${quizData.length}`;
-      progressBar.style.width = `${((currentQuestionIndex + 1) / quizData.length) * 100}%`;
+    ornamentSelector.addEventListener('mousedown', (e) => {
+      isDown = true;
+      ornamentSelector.classList.add('grabbing');
+      startX = e.pageX - ornamentSelector.offsetLeft;
+      scrollStart = ornamentSelector.scrollLeft;
+    });
 
-      optionsContainer.innerHTML = "";
+    window.addEventListener('mouseup', () => {
+      isDown = false;
+      ornamentSelector.classList.remove('grabbing');
+    });
 
-      current.options.forEach((opt, idx) => {
-        const btn = document.createElement("button");
-        btn.className = "w-full text-left p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/40 transition duration-150 flex items-start gap-3 group";
-        btn.innerHTML = `
-          <span class="w-6 h-6 rounded-full border border-slate-300 text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5 group-hover:border-blue-500 group-hover:text-blue-600 bg-slate-50 text-slate-600">
-            ${idx + 1}
-          </span>
-          <span class="text-sm md:text-base font-medium text-slate-700 group-hover:text-slate-900 leading-snug">
-            ${opt}
-          </span>
+    ornamentSelector.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - ornamentSelector.offsetLeft;
+      const walk = (x - startX) * 1.4;
+      ornamentSelector.scrollLeft = scrollStart - walk;
+    });
+
+    ornamentSelector.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      ornamentSelector.scrollLeft += e.deltaY * 0.8;
+    }, { passive: false });
+
+    scrollLeftBtn.addEventListener('click', () => ornamentSelector.scrollBy({ left: -140, behavior: 'smooth' }));
+    scrollRightBtn.addEventListener('click', () => ornamentSelector.scrollBy({ left: 140, behavior: 'smooth' }));
+
+    // 무지개 색상 & 명도 슬라이더 함수
+    function hslToHex(h, s, l) {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+    }
+
+    function updateColorFromSlider() {
+      const hue = parseInt(hueSlider.value, 10);
+      const lightness = parseInt(lightnessSlider.value, 10);
+
+      const pureHueHex = hslToHex(hue, 100, 50);
+      lightnessSlider.style.background = `linear-gradient(to right, #000000 0%, ${pureHueHex} 50%, #ffffff 100%)`;
+
+      selectedHex = hslToHex(hue, 100, lightness);
+      colorPreviewBar.style.background = selectedHex;
+      colorPreviewBar.style.boxShadow = `0 0 10px ${selectedHex}88`;
+      hexText.textContent = `HEX ${selectedHex}`;
+
+      if (lightness === 0) {
+        lightnessDesc.textContent = '⚫ 순흑색 (Pure Black #000000)';
+      } else if (lightness === 100) {
+        lightnessDesc.textContent = '⚪ 순백색 (Pure White #FFFFFF)';
+      } else if (lightness === 50) {
+        lightnessDesc.textContent = '🌈 원색 (Pure Vivid Color)';
+      } else if (lightness < 50) {
+        lightnessDesc.textContent = `짙은 어두운 톤 (명도 ${lightness}%)`;
+      } else {
+        lightnessDesc.textContent = `화사한 파스텔 톤 (명도 ${lightness}%)`;
+      }
+
+      let thumbStyle = document.getElementById('thumb-style');
+      if (!thumbStyle) {
+        thumbStyle = document.createElement('style');
+        thumbStyle.id = 'thumb-style';
+        document.head.appendChild(thumbStyle);
+      }
+      thumbStyle.innerHTML = `
+        .hue-slider::-webkit-slider-thumb { background: ${pureHueHex} !important; }
+        .hue-slider::-moz-range-thumb { background: ${pureHueHex} !important; }
+        .lightness-slider::-webkit-slider-thumb { background: ${selectedHex} !important; }
+        .lightness-slider::-moz-range-thumb { background: ${selectedHex} !important; }
+      `;
+    }
+
+    hueSlider.addEventListener('input', updateColorFromSlider);
+    lightnessSlider.addEventListener('input', updateColorFromSlider);
+    updateColorFromSlider();
+
+    // ==========================================
+    // ❶ 1단계: MP3 Audio 객체 선언 및 시크바 연동
+    // ==========================================
+    // (index.html과 동일 폴더 기준 './musicbox.mp3' 또는 './carol.mp3')
+    const bgmAudio = new Audio('./musicbox.mp3');
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.5;
+
+    // 분:초 포맷 보조 함수
+    function formatTime(sec) {
+      if (isNaN(sec) || !isFinite(sec)) return "0:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // 노래 재생 시간에 맞춰 시크바와 시간 텍스트 업데이트
+    bgmAudio.addEventListener('timeupdate', () => {
+      if (!isSeeking && bgmAudio.duration) {
+        const percent = (bgmAudio.currentTime / bgmAudio.duration) * 100;
+        bgmSeekBar.value = percent;
+        bgmTimeText.textContent = `${formatTime(bgmAudio.currentTime)} / ${formatTime(bgmAudio.duration)}`;
+      }
+    });
+
+    bgmAudio.addEventListener('loadedmetadata', () => {
+      bgmTimeText.textContent = `0:00 / ${formatTime(bgmAudio.duration)}`;
+    });
+
+    // 사용자가 시크바를 조작할 때 원하는 위치로 오디오 이동
+    let isSeeking = false;
+    bgmSeekBar.addEventListener('input', () => {
+      isSeeking = true;
+      if (bgmAudio.duration) {
+        const seekTime = (bgmSeekBar.value / 100) * bgmAudio.duration;
+        bgmTimeText.textContent = `${formatTime(seekTime)} / ${formatTime(bgmAudio.duration)}`;
+      }
+    });
+
+    bgmSeekBar.addEventListener('change', () => {
+      if (bgmAudio.duration) {
+        bgmAudio.currentTime = (bgmSeekBar.value / 100) * bgmAudio.duration;
+      }
+      isSeeking = false;
+    });
+
+    // 6개 채널별 실시간 HLS 원본 스트리밍 주소 매핑
+    const RADIO_CHANNELS = {
+      kbs2radio: {
+        name: "KBS 2라디오",
+        hls: "https://2radio-ad.gscdn.kbs.co.kr/2radio_ad_192_1.m3u8?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly8ycmFkaW8tYWQuZ3NjZG4ua2JzLmNvLmtyLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTM5NzA5NjR9fX1dfQ__&Key-Pair-Id=APKAICDSGT3Y7IXGJ3TA&Signature=h4~AE4-Un08G6FsiK1AAYj0vCg4gnv7JuTSOH7m8ywVipyxGo~~63VZztUUx6OA2nJGIk4fdBs0wfbVh0S~3xQdYGbFGheABM9bisIdDyREXxDNdlc3mgGywZFo8Ytz76hfY~IpJVhLTO4j4tg1UVb8~rOgaRM2RdQzFwBzRiGjwoHuab6NzMLxDWVPhtrWJHBU3rDRqIWmC2ZitdevTwV9lnJ7Dz1E-7higtb1Kg~edOBy3Lh7LgttkoRxKeV3DVG-ge1BYUOtCIitzA8Z2yCc~DFAiVg9KYoCfrlo5YSvEKZgpAoJbki1nvJQfBpumC4rLhIRms5XPzDbc3vFpEQ__",
+        stream: "https://radio.bsod.kr/stream?stn=kbs&ch=2radio"
+      },
+      kbs2fm: {
+        name: "KBS 2FM",
+        hls: "https://2fm-ad.gscdn.kbs.co.kr/2fm_ad_192_1.m3u8?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly8yZm0tYWQuZ3NjZG4ua2JzLmNvLmtyLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTM5NjczMzB9fX1dfQ__&Key-Pair-Id=APKAICDSGT3Y7IXGJ3TA&Signature=bIgVjIQe27w7BGwBSQegviDoMZlqs5PsiQzp5ROIolm0ZoTIU9CdDR7iWWSCgAxl6dnDZbkyQjYknxW2UckwE5Psj8oRkmEe1AM2OjEjVddGDQo2w4rB8bECbt0zvgyDF5oY6JOrPE9jMt79SfvXigsrtZZtzETDhQAk8oZGFmalbNXrurEJyKt2RpfIaLv1ZdBPUNCZvLpyNS4FT0bUWyGe9Z~7TAtzYth7MyiVjfu97mWhJUfjVe8Be-VuwpTuAS2H44f4kyZjTQSseWKMmAFbblRP9B3nS0Z7aP9cDvx~gxpjD3Y9hI33z9s~IY6ZJgjppTIFnGskaZ~hDrD0NQ__",
+        stream: "https://radio.bsod.kr/stream?stn=kbs&ch=2fm"
+      },
+      mbcsfm: {
+        name: "MBC 표준FM",
+        hls: "https://minisw.imbc.com/dsfm/_definst_/sfm.stream/playlist.m3u8?_lsu_sa_=62C14C12939933A47F4945EC35112848358338259A04E28B33C001aBF6133DA6CBa5130839D22B47F02D3D71B3bCB1B6BB60C427F69EEAE97819311F681222B4F2D9DFEB5010A14D3206B1F2992ED855BF7367834E89BF652A51CA5D2751CFC60FA03CE69F9F32E0F87B911C8C7F4AE8",
+        stream: "https://radio.bsod.kr/stream?stn=mbc&ch=sfm"
+      },
+      mbcfm4u: {
+        name: "MBC FM4U",
+        hls: "https://minimw.imbc.com/dmfm/_definst_/mfm.stream/playlist.m3u8?_lsu_sa_=61A14C14D3533A94064735BE38F1ED4165173A85690DB2693190DFaD662338E69FaD93713BD26C40B09F34A1A8bA81B8951931FB0A57A49FBC808CC8DD71F31365D3D3095CA2C29B93D2AC7CF9877988E0A2202F715390DC433436BAF3D9F446DF158AD5F7755C192666199A370919CF",
+        stream: "https://radio.bsod.kr/stream?stn=mbc&ch=fm4u"
+      },
+      sbspowerfm: {
+        name: "SBS 파워FM",
+        hls: "https://radiolive.sbs.co.kr/powerpc/powerfm.stream/playlist.m3u8?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3OTM4MzY3NTYsInBhdGgiOiIvcG93ZXJmbS5zdHJlYW0iLCJkdXJhdGlvbiI6LTEsInVubyI6IjQzNTY5NTQ1LTU3OGUtNDQxYS1iODE5LTY1NjdmMWRiZTJlMCIsImlhdCI6MTc5Mzc5MzU1Nn0.c2KQy3wX1SP5LrpRsgLpkwaDvW9_jNkDdqDj-j1u3TE",
+        stream: "https://radio.bsod.kr/stream?stn=sbs&ch=powerfm"
+      },
+      sbsdmb: {
+        name: "SBS 고릴라M",
+        hls: "https://radiolive.sbs.co.kr/sbsdmbpc/sbsdmb.stream/playlist.m3u8?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3OTM4NDIyNjMsInBhdGgiOiIvc2JzZG1iLnN0cmVhbSIsImR1cmF0aW9uIjotMSwidW5vIjoiZjU0ZDViMmEtNzJlZi00MDkyLTkzMGItZmFmMTVlY2Q2NGYzIiwiaWF0IjoxNzkzNzk5MDYzfQ.GvQV9XuP2TS2_IreBYc2kyLZU2cF9jAFyHVHKN3uTZw",
+        stream: "https://radio.bsod.kr/stream?stn=sbs&ch=dmb"
+      }
+    };
+
+    const radioAudio = document.getElementById('radioAudio');
+    const radioLiveDot = document.getElementById('radioLiveDot');
+    const radioStatusText = document.getElementById('radioStatusText');
+    const radioChannelBtns = document.querySelectorAll('.radio-channel-btn');
+    let currentRadioChannel = null;
+    let hlsInstance = null;
+
+    function stopRadio() {
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+      radioAudio.pause();
+      radioAudio.removeAttribute('src');
+      radioAudio.load();
+
+      radioChannelBtns.forEach(b => b.classList.remove('active'));
+      currentRadioChannel = null;
+      radioLiveDot.classList.remove('active');
+      radioStatusText.textContent = '재생 대기중';
+      radioStatusText.classList.remove('active');
+    }
+
+    function playChannel(chKey, btn) {
+      const ch = RADIO_CHANNELS[chKey];
+      if (!ch) return;
+
+      if (currentRadioChannel === chKey && !radioAudio.paused) {
+        radioAudio.pause();
+        radioStatusText.textContent = `${ch.name} (일시정지)`;
+        radioLiveDot.classList.remove('active');
+        showToast(`[${ch.name}] 재생이 일시정지되었습니다.`);
+        return;
+      }
+
+      // ==========================================
+      // ❸ 3단계: 라디오 재생 시 MP3 BGM 정지 로직
+      // ==========================================
+      if (!bgmAudio.paused) {
+        bgmAudio.pause();
+        bgmBtn.classList.remove('playing');
+        bgmBtnText.textContent = '오르골 BGM';
+      }
+
+      radioChannelBtns.forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      currentRadioChannel = chKey;
+
+      radioStatusText.textContent = `${ch.name} (연결 중...)`;
+      radioStatusText.classList.add('active');
+      radioLiveDot.classList.add('active');
+
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
+        hlsInstance.loadSource(ch.hls);
+        hlsInstance.attachMedia(radioAudio);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          radioAudio.play().then(() => {
+            radioStatusText.textContent = ch.name;
+            showToast(`📻 [${ch.name}] 방송이 시작되었습니다.`);
+          }).catch(err => {
+            console.warn('플레이어 재생 대기:', err);
+            radioStatusText.textContent = `${ch.name} (▶ 재생 버튼 클릭)`;
+          });
+        });
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.warn("HLS 에러 발생, 직접 연결 시도:", data);
+            playDirectStream(ch);
+          }
+        });
+      } else if (radioAudio.canPlayType('application/vnd.apple.mpegurl')) {
+        radioAudio.src = ch.hls;
+        radioAudio.play().then(() => {
+          radioStatusText.textContent = ch.name;
+          showToast(`📻 [${ch.name}] 방송이 시작되었습니다.`);
+        }).catch(() => {
+          radioStatusText.textContent = `${ch.name} (▶ 재생 버튼 클릭)`;
+        });
+      } else {
+        playDirectStream(ch);
+      }
+    }
+
+    function playDirectStream(ch) {
+      radioAudio.src = ch.hls;
+      radioAudio.play().then(() => {
+        radioStatusText.textContent = ch.name;
+        showToast(`📻 [${ch.name}] 방송이 시작되었습니다.`);
+      }).catch(() => {
+        radioAudio.src = ch.stream;
+        radioAudio.play().then(() => {
+          radioStatusText.textContent = ch.name;
+          showToast(`📻 [${ch.name}] 방송이 시작되었습니다.`);
+        }).catch(err => {
+          console.warn("직접 재생 실패:", err);
+          radioStatusText.textContent = `${ch.name} (▶ 재생 클릭)`;
+        });
+      });
+    }
+
+    radioChannelBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chKey = btn.getAttribute('data-channel');
+        playChannel(chKey, btn);
+      });
+    });
+
+    // ==========================================
+    // ❸ 3단계: radioAudio 'play' 이벤트 내부의 BGM 정지
+    // ==========================================
+    radioAudio.addEventListener('play', () => {
+      if (!bgmAudio.paused) {
+        bgmAudio.pause();
+        bgmBtn.classList.remove('playing');
+        bgmBtnText.textContent = '오르골 BGM';
+      }
+      radioLiveDot.classList.add('active');
+      radioStatusText.classList.add('active');
+    });
+
+    radioAudio.addEventListener('pause', () => {
+      radioLiveDot.classList.remove('active');
+    });
+
+    // ==========================================
+    // ❷ 2단계: bgmBtn 클릭 이벤트 리스너 수정
+    // ==========================================
+    bgmBtn.addEventListener('click', () => {
+      if (bgmAudio.paused) {
+        // 1. 라디오가 켜져 있다면 정지
+        stopRadio();
+
+        // 2. MP3 재생
+        bgmAudio.play().then(() => {
+          bgmBtn.classList.add('playing');
+          bgmBtnText.textContent = 'BGM 켜짐';
+          showToast('🎵 오르골 음악이 재생됩니다.');
+        }).catch(err => {
+          console.warn('BGM 재생 대기:', err);
+        });
+      } else {
+        // MP3 일시 정지
+        bgmAudio.pause();
+        bgmBtn.classList.remove('playing');
+        bgmBtnText.textContent = '오르골 BGM';
+        showToast('BGM이 일시 정지되었습니다.');
+      }
+    });
+
+    // Three.js 씬, 카메라 & 조명
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0e1828, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 28, 68);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x0e1828);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.20;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.02;
+    controls.minDistance = 15;
+    controls.maxDistance = 115;
+    controls.target.set(0, 10, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.4;
+
+    controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+    const ambientLight = new THREE.AmbientLight(0x35465e, 1.55);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff8ee, 1.25);
+    dirLight.position.set(25, 50, 30);
+    scene.add(dirLight);
+
+    const groundGeo = new THREE.CylinderGeometry(44, 48, 2.2, 64);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x24344d,
+      roughness: 0.88,
+      metalness: 0.05
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.position.y = -1.1;
+    scene.add(ground);
+
+    // 4그루 나무 구성 & 상단 장식 정의
+    const R_TRIANGLE = 23;
+    const TREES_CONFIG = [
+      { id: 0, name: '중앙 메인 트리 (하트)', topper: 'heart', x: 0, z: 0, scale: 1.15, rotationY: 0, lightColor: 0xff3b6f },
+      { id: 1, name: '북쪽 별빛 트리 (별)', topper: 'star', x: 0, z: -R_TRIANGLE, scale: 0.96, rotationY: 0.8, lightColor: 0xffd000 },
+      { id: 2, name: '남서 눈꽃 트리 (눈꽃)', topper: 'snowflake', x: -R_TRIANGLE * Math.cos(Math.PI / 6), z: R_TRIANGLE * Math.sin(Math.PI / 6), scale: 1.05, rotationY: 2.1, lightColor: 0x67e8f9 },
+      { id: 3, name: '남동 달빛 트리 (달빛)', topper: 'moon', x: R_TRIANGLE * Math.cos(Math.PI / 6), z: R_TRIANGLE * Math.sin(Math.PI / 6), scale: 0.88, rotationY: 4.2, lightColor: 0xffeaa7 }
+    ];
+
+    const treeOrnamentsCounts = [0, 0, 0, 0];
+    const treeHitMeshes = [];
+
+    const tierDefs = [
+      { id: 0, rBottom: 6.8, height: 5.5, y: 5.5, color: 0x0b2615 },
+      { id: 1, rBottom: 5.4, height: 5.2, y: 9.2, color: 0x0f331c },
+      { id: 2, rBottom: 4.0, height: 4.8, y: 12.8, color: 0x143d23 },
+      { id: 3, rBottom: 2.5, height: 4.4, y: 16.2, color: 0x19472a }
+    ];
+
+    const topperMeshes = [];
+    const topperLights = [];
+
+    function createTreeTopper(type, lightColor) {
+      const topperGroup = new THREE.Group();
+      let mainMesh;
+
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xffe066, emissive: 0xffb703, emissiveIntensity: 0.85, roughness: 0.2, metalness: 0.8
+      });
+
+      switch(type) {
+        case 'heart': {
+          const hShape = new THREE.Shape();
+          const x = 0, y = 0;
+          hShape.moveTo(x + 0.35, y + 0.35);
+          hShape.bezierCurveTo(x + 0.35, y + 0.35, x + 0.3, y, x, y);
+          hShape.bezierCurveTo(x - 0.45, y, x - 0.45, y + 0.5, x - 0.45, y + 0.5);
+          hShape.bezierCurveTo(x - 0.45, y + 0.8, x - 0.15, y + 1.1, x + 0.35, y + 1.35);
+          hShape.bezierCurveTo(x + 0.85, y + 1.1, x + 1.15, y + 0.8, x + 1.15, y + 0.5);
+          hShape.bezierCurveTo(x + 1.15, y + 0.5, x + 1.15, y, x + 0.7, y);
+          hShape.bezierCurveTo(x + 0.5, y, x + 0.35, y + 0.35, x + 0.35, y + 0.35);
+
+          const geo = new THREE.ExtrudeGeometry(hShape, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.08 });
+          geo.center();
+          const heartMat = new THREE.MeshStandardMaterial({
+            color: 0xff3366, emissive: 0xff1040, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.7
+          });
+          mainMesh = new THREE.Mesh(geo, heartMat);
+          mainMesh.rotation.z = Math.PI;
+          mainMesh.scale.set(1.4, 1.4, 1.4);
+          break;
+        }
+
+        case 'snowflake': {
+          mainMesh = new THREE.Group();
+          const iceMat = new THREE.MeshStandardMaterial({
+            color: 0xdff4ff, emissive: 0x38bdf8, emissiveIntensity: 0.85, roughness: 0.1, metalness: 0.85
+          });
+          for (let i = 0; i < 3; i++) {
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 8), iceMat);
+            bar.rotation.z = (i * Math.PI) / 3;
+            mainMesh.add(bar);
+            for (let j = -1; j <= 1; j += 2) {
+              const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 8), iceMat);
+              sub.position.set(0, j * 0.7, 0);
+              sub.rotation.z = (i * Math.PI) / 3 + Math.PI / 4;
+              mainMesh.add(sub);
+            }
+          }
+          const core = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), goldMat);
+          mainMesh.add(core);
+          break;
+        }
+
+        case 'moon': {
+          const mShape = new THREE.Shape();
+          mShape.absarc(0, 0, 1.15, 0, Math.PI * 2, false);
+          const hole = new THREE.Path();
+          hole.absarc(0.48, 0.22, 1.02, 0, Math.PI * 2, true);
+          mShape.holes.push(hole);
+
+          const geo = new THREE.ExtrudeGeometry(mShape, { depth: 0.38, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06 });
+          geo.center();
+          const moonMat = new THREE.MeshStandardMaterial({
+            color: 0xfff3b0, emissive: 0xffd166, emissiveIntensity: 0.85, roughness: 0.2, metalness: 0.8
+          });
+          mainMesh = new THREE.Mesh(geo, moonMat);
+          break;
+        }
+
+        case 'star':
+        default: {
+          const starShape = new THREE.Shape();
+          for (let i = 0; i < 10; i++) {
+            const r = (i % 2 === 0) ? 1.35 : 0.58;
+            const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (i === 0) starShape.moveTo(x, y);
+            else starShape.lineTo(x, y);
+          }
+          starShape.closePath();
+          const geo = new THREE.ExtrudeGeometry(starShape, { depth: 0.35, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.08 });
+          geo.center();
+          mainMesh = new THREE.Mesh(geo, goldMat);
+          break;
+        }
+      }
+
+      topperGroup.add(mainMesh);
+      topperGroup.position.set(0, 19.4, 0);
+      return { topperGroup, mainMesh };
+    }
+
+    function buildTree(cfg) {
+      const treeGroup = new THREE.Group();
+      treeGroup.position.set(cfg.x, 0, cfg.z);
+      treeGroup.scale.set(cfg.scale, cfg.scale, cfg.scale);
+      treeGroup.rotation.y = cfg.rotationY;
+
+      const trunkGeo = new THREE.CylinderGeometry(0.85, 1.1, 4.5, 16);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x331e11, roughness: 0.92, metalness: 0.0 });
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 2.25;
+      trunk.userData = { isTree: true, treeIndex: cfg.id };
+      treeGroup.add(trunk);
+      treeHitMeshes.push(trunk);
+
+      tierDefs.forEach(t => {
+        const coneGeo = new THREE.ConeGeometry(t.rBottom, t.height, 28, 1, false);
+        const coneMat = new THREE.MeshStandardMaterial({
+          color: t.color,
+          roughness: 0.88,
+          metalness: 0.0,
+          flatShading: true
+        });
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+        cone.position.y = t.y;
+        cone.userData = { isTree: true, treeIndex: cfg.id };
+        treeGroup.add(cone);
+        treeHitMeshes.push(cone);
+      });
+
+      const { topperGroup, mainMesh } = createTreeTopper(cfg.topper, cfg.lightColor);
+      topperGroup.userData = { isTree: true, treeIndex: cfg.id };
+      treeGroup.add(topperGroup);
+      topperMeshes.push(mainMesh);
+      treeHitMeshes.push(mainMesh);
+
+      const topLight = new THREE.PointLight(cfg.lightColor, 1.8, 16, 1.2);
+      topLight.position.set(0, 19.5, 0);
+      treeGroup.add(topLight);
+      topperLights.push(topLight);
+
+      const fairyLightsGeo = new THREE.BufferGeometry();
+      const fairyPositions = [];
+      const fairyColors = [];
+      const palette = [new THREE.Color(0xffeaa7), new THREE.Color(0xff7675), new THREE.Color(0x74b9ff), new THREE.Color(0x55efc4)];
+      const totalBulbs = 140;
+      for (let i = 0; i < totalBulbs; i++) {
+        const p = i / totalBulbs;
+        const y = 3.6 + p * 14.2;
+        const r = (1 - p) * 6.2 + 0.65;
+        const angle = p * Math.PI * 2 * 6.5;
+        fairyPositions.push(Math.cos(angle) * r, y, Math.sin(angle) * r);
+        const c = palette[i % palette.length];
+        fairyColors.push(c.r, c.g, c.b);
+      }
+      fairyLightsGeo.setAttribute('position', new THREE.Float32BufferAttribute(fairyPositions, 3));
+      fairyLightsGeo.setAttribute('color', new THREE.Float32BufferAttribute(fairyColors, 3));
+      const fairyPoints = new THREE.Points(fairyLightsGeo, new THREE.PointsMaterial({
+        size: 0.35, vertexColors: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending
+      }));
+      treeGroup.add(fairyPoints);
+
+      scene.add(treeGroup);
+
+      const spotLight = new THREE.SpotLight(0xfff3db, 1.4);
+      spotLight.position.set(cfg.x, 34, cfg.z);
+      spotLight.target.position.set(cfg.x, 7 * cfg.scale, cfg.z);
+      spotLight.angle = Math.PI / 4.5;
+      spotLight.penumbra = 0.6;
+      spotLight.distance = 55;
+      spotLight.decay = 1.2;
+      scene.add(spotLight);
+      scene.add(spotLight.target);
+
+      return treeGroup;
+    }
+
+    TREES_CONFIG.forEach(cfg => buildTree(cfg));
+
+    const selectionRingGeo = new THREE.RingGeometry(8.2, 9.5, 48);
+    const selectionRingMat = new THREE.MeshBasicMaterial({
+      color: 0xffd700, side: THREE.DoubleSide, transparent: true, opacity: 0.65
+    });
+    const selectionRing = new THREE.Mesh(selectionRingGeo, selectionRingMat);
+    selectionRing.rotation.x = -Math.PI / 2;
+    selectionRing.position.set(TREES_CONFIG[0].x, 0.08, TREES_CONFIG[0].z);
+    scene.add(selectionRing);
+
+    function updateTreeSelection(idx, notify = true) {
+      selectedTreeIndex = idx;
+      const cfg = TREES_CONFIG[idx];
+      selectedTreeName.textContent = cfg.name;
+      selectionRing.position.set(cfg.x, 0.08, cfg.z);
+      selectionRing.scale.set(cfg.scale, cfg.scale, cfg.scale);
+      if (notify) {
+        showToast(`🌲 '${cfg.name}'이(가) 선택되었습니다!`);
+      }
+    }
+
+    function createSnowTexture() {
+      const c = document.createElement('canvas');
+      c.width = 32; c.height = 32;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(16, 16, 16, 0, Math.PI * 2);
+      ctx.fill();
+      return new THREE.CanvasTexture(c);
+    }
+
+    const maxSnowCount = 4500;
+    let activeSnowCount = 2000;
+    const snowGeo = new THREE.BufferGeometry();
+    const snowPos = new Float32Array(maxSnowCount * 3);
+    const snowVel = new Float32Array(maxSnowCount);
+
+    for (let i = 0; i < maxSnowCount; i++) {
+      snowPos[i * 3] = (Math.random() - 0.5) * 120;
+      snowPos[i * 3 + 1] = Math.random() * 45;
+      snowPos[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      snowVel[i] = 0.04 + Math.random() * 0.06;
+    }
+    snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+    snowGeo.setDrawRange(0, activeSnowCount);
+
+    const snowParticles = new THREE.Points(snowGeo, new THREE.PointsMaterial({
+      size: 0.55, map: createSnowTexture(), transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    scene.add(snowParticles);
+
+    snowSlider.addEventListener('input', (e) => {
+      activeSnowCount = parseInt(e.target.value, 10);
+      snowGeo.setDrawRange(0, activeSnowCount);
+    });
+
+    function create3DOrnament(shapeType, colorHex) {
+      const group = new THREE.Group();
+      const colorVal = parseInt((colorHex || '#FF3B30').replace('#', ''), 16);
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: colorVal, emissive: colorVal, emissiveIntensity: 0.35, roughness: 0.25, metalness: 0.75
+      });
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.2 });
+
+      let mainMesh;
+
+      switch(shapeType) {
+        case 'star': {
+          const sShape = new THREE.Shape();
+          for (let i = 0; i < 10; i++) {
+            const r = (i % 2 === 0) ? 0.6 : 0.26;
+            const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (i === 0) sShape.moveTo(x, y);
+            else sShape.lineTo(x, y);
+          }
+          sShape.closePath();
+          const geo = new THREE.ExtrudeGeometry(sShape, { depth: 0.18, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.04 });
+          geo.center();
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+
+        case 'snowman': {
+          mainMesh = new THREE.Group();
+          const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), mat);
+          b1.position.y = -0.15;
+          const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), whiteMat);
+          b2.position.y = 0.32;
+          const nose = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xff7700 }));
+          nose.rotation.x = Math.PI / 2;
+          nose.position.set(0, 0.32, 0.26);
+          mainMesh.add(b1, b2, nose);
+          break;
+        }
+
+        case 'candycane': {
+          const path = new THREE.CurvePath();
+          path.add(new THREE.LineCurve3(new THREE.Vector3(0, -0.5, 0), new THREE.Vector3(0, 0.2, 0)));
+          path.add(new THREE.ArcCurve(0.18, 0.2, 0.18, Math.PI, 0, false));
+          const geo = new THREE.TubeGeometry(path, 20, 0.09, 8, false);
+          geo.center();
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+
+        case 'snowflake': {
+          mainMesh = new THREE.Group();
+          for (let i = 0; i < 3; i++) {
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 8), mat);
+            bar.rotation.z = (i * Math.PI) / 3;
+            mainMesh.add(bar);
+          }
+          const centerSphere = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), goldMat);
+          mainMesh.add(centerSphere);
+          break;
+        }
+
+        case 'bell': {
+          mainMesh = new THREE.Group();
+          const bellBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.48, 0.65, 16, 1, true), mat);
+          const bellTop = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 16), mat);
+          bellTop.position.y = 0.32;
+          const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), goldMat);
+          clapper.position.y = -0.32;
+          mainMesh.add(bellBody, bellTop, clapper);
+          break;
+        }
+
+        case 'gift': {
+          mainMesh = new THREE.Group();
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65), mat);
+          const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.67, 0.14), goldMat);
+          const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.67, 0.67), goldMat);
+          mainMesh.add(box, rib1, rib2);
+          break;
+        }
+
+        case 'heart': {
+          const hShape = new THREE.Shape();
+          const x = 0, y = 0;
+          hShape.moveTo(x + 0.25, y + 0.25);
+          hShape.bezierCurveTo(x + 0.25, y + 0.25, x + 0.2, y, x, y);
+          hShape.bezierCurveTo(x - 0.3, y, x - 0.3, y + 0.35, x - 0.3, y + 0.35);
+          hShape.bezierCurveTo(x - 0.3, y + 0.55, x - 0.1, y + 0.77, x + 0.25, y + 0.95);
+          hShape.bezierCurveTo(x + 0.6, y + 0.77, x + 0.8, y + 0.55, x + 0.8, y + 0.35);
+          hShape.bezierCurveTo(x + 0.8, y + 0.35, x + 0.8, y, x + 0.5, y);
+          hShape.bezierCurveTo(x + 0.35, y, x + 0.25, y + 0.25, x + 0.25, y + 0.25);
+          const geo = new THREE.ExtrudeGeometry(hShape, { depth: 0.18, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04 });
+          geo.center();
+          mainMesh = new THREE.Mesh(geo, mat);
+          mainMesh.rotation.z = Math.PI;
+          break;
+        }
+
+        case 'moon': {
+          const mShape = new THREE.Shape();
+          mShape.absarc(0, 0, 0.55, 0, Math.PI * 2, false);
+          const hole = new THREE.Path();
+          hole.absarc(0.22, 0.1, 0.48, 0, Math.PI * 2, true);
+          mShape.holes.push(hole);
+          const geo = new THREE.ExtrudeGeometry(mShape, { depth: 0.16, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03 });
+          geo.center();
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+
+        case 'diamond': {
+          const geo = new THREE.OctahedronGeometry(0.55, 0);
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+
+        case 'santahat': {
+          mainMesh = new THREE.Group();
+          const hatBody = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.75, 16), mat);
+          const pompom = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), whiteMat);
+          pompom.position.y = 0.4;
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 12, 24), whiteMat);
+          rim.rotation.x = Math.PI / 2;
+          rim.position.y = -0.35;
+          mainMesh.add(hatBody, pompom, rim);
+          break;
+        }
+
+        case 'gingerbread': {
+          mainMesh = new THREE.Group();
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 16), mat);
+          head.position.y = 0.35;
+          const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.45, 12), mat);
+          torso.position.y = 0.05;
+          const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.38, 8), mat);
+          arm1.rotation.z = Math.PI / 3;
+          arm1.position.set(-0.25, 0.15, 0);
+          const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.38, 8), mat);
+          arm2.rotation.z = -Math.PI / 3;
+          arm2.position.set(0.25, 0.15, 0);
+          const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.38, 8), mat);
+          leg1.position.set(-0.14, -0.32, 0);
+          const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.38, 8), mat);
+          leg2.position.set(0.14, -0.32, 0);
+          mainMesh.add(head, torso, arm1, arm2, leg1, leg2);
+          break;
+        }
+
+        case 'ribbon': {
+          const geo = new THREE.TorusKnotGeometry(0.28, 0.08, 48, 8, 2, 3);
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+
+        case 'ball':
+        default: {
+          const geo = new THREE.SphereGeometry(0.52, 24, 24);
+          mainMesh = new THREE.Mesh(geo, mat);
+          break;
+        }
+      }
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 12), goldMat);
+      cap.position.y = 0.58;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.022, 8, 16), goldMat);
+      ring.position.y = 0.68;
+
+      group.add(mainMesh, cap, ring);
+      return group;
+    }
+
+    const ornamentMeshes = [];
+    const ornamentDataMap = new Map();
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2(-1000, -1000);
+    let hoveredGroup = null;
+
+    function updateNeonTicker(data) {
+      latestWishesList.unshift(data);
+      if (latestWishesList.length > 15) latestWishesList.pop();
+
+      neonTickerTrack.innerHTML = '';
+      const renderList = [...latestWishesList, ...latestWishesList];
+      renderList.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'neon-item';
+        
+        const kwColor = (item.colorHex || '#ffd700').toUpperCase();
+        let kwStyle = '';
+        if (kwColor === '#000000') {
+          kwStyle = 'color: #ffffff; border-color: #64748b; background: rgba(0,0,0,0.85); text-shadow: 0 0 5px #94a3b8; box-shadow: 0 0 6px rgba(255,255,255,0.25);';
+        } else if (kwColor === '#FFFFFF') {
+          kwStyle = 'color: #ffffff; border-color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.2); text-shadow: 0 0 10px #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.6);';
+        } else {
+          kwStyle = `color: ${kwColor}; border-color: ${kwColor}66; background: ${kwColor}1a; text-shadow: 0 0 8px ${kwColor}; box-shadow: 0 0 6px ${kwColor}33;`;
+        }
+
+        row.innerHTML = `
+          <span class="neon-date">${item.date || '11.4'}</span>
+          <span class="neon-nick">${item.nickname || '익명의 별'}</span>
+          <span class="neon-kw" style="${kwStyle}">#${item.keyword || '소원'}</span>
         `;
-        btn.onclick = () => selectOption(idx, btn);
-        optionsContainer.appendChild(btn);
+        row.addEventListener('click', () => openModal(item));
+        neonTickerTrack.appendChild(row);
       });
     }
 
-    function selectOption(selectedIndex, selectedBtn) {
-      if (answered) return;
-      answered = true;
+    function addWishOrnament(id, data) {
+      if (ornamentDataMap.has(id)) return;
 
-      const current = quizData[currentQuestionIndex];
-      const buttons = optionsContainer.querySelectorAll("button");
+      let treeIdx = typeof data.treeIndex === 'number' ? data.treeIndex : (ornamentMeshes.length % 4);
+      if (treeIdx < 0 || treeIdx > 3) treeIdx = 0;
 
-      buttons.forEach((b) => {
-        b.classList.remove("hover:border-blue-400", "hover:bg-blue-50/40");
-        b.disabled = true;
+      if (treeOrnamentsCounts[treeIdx] >= 150) {
+        for (let i = 0; i < 4; i++) {
+          if (treeOrnamentsCounts[i] < 150) {
+            treeIdx = i;
+            break;
+          }
+        }
+      }
+      treeOrnamentsCounts[treeIdx]++;
+
+      const treeCfg = TREES_CONFIG[treeIdx];
+      const tierIndex = Math.floor(Math.random() * 4);
+      const tier = tierDefs[tierIndex];
+
+      const relY = 0.18 + Math.random() * 0.54;
+      const localY = (tier.y - tier.height / 2) + relY * tier.height;
+
+      const surfaceR = tier.rBottom * (1 - relY);
+      const safeR = surfaceR + 0.95;
+
+      let angle = Math.random() * Math.PI * 2;
+      if (data.xRatio) angle = (data.xRatio / 100) * Math.PI * 2;
+
+      const localX = Math.cos(angle) * safeR;
+      const localZ = Math.sin(angle) * safeR;
+
+      const worldX = treeCfg.x + localX * treeCfg.scale;
+      const worldY = localY * treeCfg.scale;
+      const worldZ = treeCfg.z + localZ * treeCfg.scale;
+
+      const shape = data.shapeType || 'star';
+      const colorHex = data.colorHex || '#FFD32A';
+
+      const ornamentObj = create3DOrnament(shape, colorHex);
+      ornamentObj.position.set(worldX, worldY, worldZ);
+
+      const facingAngle = Math.atan2(localZ, localX);
+      ornamentObj.rotation.y = -facingAngle + Math.PI / 2;
+
+      ornamentObj.userData = { id, data: { ...data, treeIndex: treeIdx } };
+      scene.add(ornamentObj);
+
+      ornamentMeshes.push(ornamentObj);
+      ornamentDataMap.set(id, data);
+
+      forestTotalCount.textContent = `🌲 총 소원: ${ornamentMeshes.length} / 600개`;
+      updateNeonTicker(data);
+    }
+
+    function onPointerMove(e) {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(ornamentMeshes, true);
+      if (intersects.length > 0) {
+        let topGroup = intersects[0].object;
+        while (topGroup.parent && topGroup.parent !== scene) {
+          topGroup = topGroup.parent;
+        }
+
+        if (hoveredGroup !== topGroup) {
+          if (hoveredGroup) hoveredGroup.scale.set(1, 1, 1);
+          hoveredGroup = topGroup;
+          hoveredGroup.scale.set(1.35, 1.35, 1.35);
+          document.body.style.cursor = 'pointer';
+
+          const shapeObj = ORNAMENTS.find(o => o.id === (topGroup.userData.data.shapeType || 'star'));
+          const shapeName = shapeObj ? `${shapeObj.icon} ` : '';
+          const author = topGroup.userData.data.nickname ? `[${topGroup.userData.data.nickname}] ` : '';
+          hoverLabel.textContent = `${shapeName}${author}#${topGroup.userData.data.keyword || '소원'}`;
+          hoverLabel.style.opacity = '1';
+        }
+
+        const v = new THREE.Vector3();
+        topGroup.getWorldPosition(v);
+        v.project(camera);
+        const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+        const y = -(v.y * 0.5 - 0.5) * window.innerHeight;
+        hoverLabel.style.left = `${x}px`;
+        hoverLabel.style.top = `${y}px`;
+        return;
+      }
+
+      if (hoveredGroup) {
+        hoveredGroup.scale.set(1, 1, 1);
+        hoveredGroup = null;
+        document.body.style.cursor = 'default';
+        hoverLabel.style.opacity = '0';
+      }
+
+      const treeIntersects = raycaster.intersectObjects(treeHitMeshes, false);
+      if (treeIntersects.length > 0) {
+        document.body.style.cursor = 'pointer';
+      } else {
+        document.body.style.cursor = 'default';
+      }
+    }
+
+    function onPointerDown(e) {
+      if (e.target.closest('.dock-container') || e.target.closest('.modal-card') || e.target.closest('.top-controls') || e.target.closest('.neon-board-container')) return;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(ornamentMeshes, true);
+      if (intersects.length > 0) {
+        let topGroup = intersects[0].object;
+        while (topGroup.parent && topGroup.parent !== scene) {
+          topGroup = topGroup.parent;
+        }
+        openModal(topGroup.userData.data);
+        return;
+      }
+
+      const treeIntersects = raycaster.intersectObjects(treeHitMeshes, false);
+      if (treeIntersects.length > 0) {
+        const hitTree = treeIntersects[0].object;
+        if (hitTree.userData && typeof hitTree.userData.treeIndex === 'number') {
+          updateTreeSelection(hitTree.userData.treeIndex, true);
+        }
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('click', onPointerDown);
+
+    function extractKeyword(text) {
+      const clean = text.replace(/[^\w\s가-힣]/g, ' ');
+      const words = clean.trim().split(/\s+/).filter(w => w.length > 0);
+      const stopWords = new Set([
+        '하고', '싶다', '싶어요', '해주세요', '바랍니다', '기원합니다', '원합니다', '바래요',
+        '모든', '모두', '정말', '너무', '진짜', '항상', '매일', '올해', '내년', '이번',
+        '우리', '나의', '저의', '내가', '제가', '그냥', '아주', '함께', '많은', '더욱',
+        '위해', '위하여', '있는', '없는', '되는', '되게', '하는', '한다', '좋겠다', '소원'
+      ]);
+
+      for (let word of words) {
+        let base = word.replace(/(은|는|이|가|을|를|에게|에서|도|로|으로|와|과|의|에)$/, '');
+        if (base.length >= 2 && !stopWords.has(base)) {
+          return base;
+        }
+      }
+      return words[0] ? words[0].slice(0, 4) : '행복';
+    }
+
+    wishInput.addEventListener('input', () => {
+      const len = wishInput.value.length;
+      charCount.textContent = `${len} / 300`;
+      sendBtn.disabled = len === 0;
+
+      wishInput.style.height = 'auto';
+      wishInput.style.height = Math.min(wishInput.scrollHeight, 120) + 'px';
+
+      if (len > 0) {
+        const kw = extractKeyword(wishInput.value);
+        extractedBadge.textContent = `핵심 키워드: #${kw}`;
+      } else {
+        extractedBadge.textContent = '핵심 단어가 자동으로 추출됩니다';
+      }
+    });
+
+    async function submitWish() {
+      const text = wishInput.value.trim();
+      if (!text) return;
+
+      sendBtn.disabled = true;
+      const nickname = nicknameInput.value.trim() || '익명의 별';
+      const keyword = extractKeyword(text);
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
+
+      let targetTree = selectedTreeIndex;
+      if (treeOrnamentsCounts[targetTree] >= 150) {
+        showToast(`'${TREES_CONFIG[targetTree].name}'이(가) 가득 차 다른 여유 나무로 배치됩니다!`);
+        for (let i = 0; i < 4; i++) {
+          if (treeOrnamentsCounts[i] < 150) {
+            targetTree = i;
+            break;
+          }
+        }
+      }
+
+      const wishData = {
+        text,
+        nickname,
+        keyword,
+        shapeType: selectedShape,
+        colorHex: selectedHex,
+        treeIndex: targetTree,
+        date: dateStr,
+        timestamp: Date.now()
+      };
+
+      try {
+        await wishesRef.push(wishData);
+        wishInput.value = '';
+        wishInput.style.height = '26px';
+        charCount.textContent = '0 / 300';
+        extractedBadge.textContent = '핵심 단어가 자동으로 추출됩니다';
+        showToast(`${TREES_CONFIG[targetTree].name}에 소원이 걸렸습니다! ⭐`);
+      } catch (err) {
+        console.error('Firebase 저장 실패 (로컬 모드):', err);
+        addWishOrnament('local-' + Date.now(), wishData);
+        showToast('오너먼트가 트리에 걸렸습니다! (로컬 모드)');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', submitWish);
+    wishInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitWish();
+      }
+    });
+
+    wishesRef.limitToLast(600).on('child_added', (snapshot) => {
+      addWishOrnament(snapshot.key, snapshot.val());
+    });
+
+    function openModal(data) {
+      const shapeObj = ORNAMENTS.find(o => o.id === (data.shapeType || 'star'));
+      const treeObj = TREES_CONFIG[data.treeIndex || 0];
+
+      modalBadgeText.textContent = `#${data.keyword || '소원'}`;
+      modalBadgeDot.style.background = data.colorHex || '#ffd700';
+      modalShapeTag.textContent = `${shapeObj ? shapeObj.icon + ' ' + shapeObj.name : '⭐ 별'} 오너먼트`;
+      modalAuthorTag.textContent = `작성자: ${data.nickname || '익명의 별'}`;
+      modalTreeTag.textContent = treeObj ? treeObj.name : '중앙 메인 트리';
+      modalCard.style.borderColor = data.colorHex || '#ffd700';
+      modalText.textContent = data.text;
+      modalDate.textContent = data.date || '따뜻한 연말';
+      modalOverlay.style.display = 'flex';
+      controls.autoRotate = false;
+    }
+
+    closeBtn.addEventListener('click', () => modalOverlay.style.display = 'none');
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) modalOverlay.style.display = 'none';
+    });
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 렌더 애니메이션 루프
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
+
+      topperMeshes.forEach((mesh, idx) => {
+        mesh.rotation.y = elapsedTime * 0.75 + idx;
+      });
+      topperLights.forEach((light, idx) => {
+        light.intensity = 1.8 + Math.sin(elapsedTime * 3 + idx) * 0.3;
       });
 
-      if (selectedIndex === current.answer) {
-        score++;
-        selectedBtn.classList.remove("border-slate-200", "bg-white");
-        selectedBtn.classList.add("border-emerald-500", "bg-emerald-50", "text-emerald-900");
-        selectedBtn.querySelector("span").classList.add("border-emerald-500", "bg-emerald-500", "text-white");
+      const ringPulse = 1.0 + Math.sin(elapsedTime * 2.5) * 0.05;
+      const baseScale = TREES_CONFIG[selectedTreeIndex].scale;
+      selectionRing.scale.set(baseScale * ringPulse, baseScale * ringPulse, baseScale * ringPulse);
 
-        feedbackBox.className = "rounded-xl p-4 mb-6 border bg-emerald-50 border-emerald-200 text-emerald-900 block";
-        feedbackIcon.className = "fa-solid fa-circle-check text-emerald-600 text-lg mt-0.5";
-        feedbackTitle.textContent = "정답입니다! 👏";
-      } else {
-        selectedBtn.classList.remove("border-slate-200", "bg-white");
-        selectedBtn.classList.add("border-rose-400", "bg-rose-50", "text-rose-900");
-        selectedBtn.querySelector("span").classList.add("border-rose-400", "bg-rose-500", "text-white");
-
-        const correctBtn = buttons[current.answer];
-        correctBtn.classList.remove("border-slate-200", "bg-white");
-        correctBtn.classList.add("border-emerald-500", "bg-emerald-50");
-
-        feedbackBox.className = "rounded-xl p-4 mb-6 border bg-rose-50 border-rose-200 text-rose-900 block";
-        feedbackIcon.className = "fa-solid fa-circle-xmark text-rose-600 text-lg mt-0.5";
-        feedbackTitle.textContent = "아쉽네요, 오답입니다.";
+      const positions = snowGeo.attributes.position.array;
+      for (let i = 0; i < activeSnowCount; i++) {
+        positions[i * 3 + 1] -= snowVel[i];
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 45;
+          positions[i * 3] = (Math.random() - 0.5) * 120;
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+        }
       }
+      snowGeo.attributes.position.needsUpdate = true;
 
-      feedbackDesc.textContent = current.explanation;
-      nextBtn.classList.remove("hidden");
+      ornamentMeshes.forEach((mesh, idx) => {
+        if (mesh !== hoveredGroup) {
+          mesh.rotation.z = Math.sin(elapsedTime * 1.8 + idx) * 0.05;
+        }
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
     }
 
-    nextBtn.onclick = () => {
-      currentQuestionIndex++;
-      if (currentQuestionIndex < quizData.length) {
-        loadQuestion();
-      } else {
-        showResults();
-      }
-    };
-
-    function showResults() {
-      quizCard.classList.add("hidden");
-      resultCard.classList.remove("hidden");
-
-      finalScore.textContent = `${score} / ${quizData.length}`;
-      const pct = Math.round((score / quizData.length) * 100);
-      scorePercent.textContent = `정답률 ${pct}%`;
-
-      if (score === quizData.length) {
-        resultMessage.textContent = "완벽합니다! 제미나이 캔버스를 200% 활용하실 준비가 되었습니다 🎉";
-      } else if (score >= 3) {
-        resultMessage.textContent = "훌륭합니다! 캔버스의 주요 특징과 워크플로우를 잘 이해하고 계십니다 👍";
-      } else {
-        resultMessage.textContent = "가이드 글을 한 번 더 가볍게 읽어보시면 더욱 능숙하게 다루실 수 있습니다 😊";
-      }
-    }
-
-    retryBtn.onclick = () => {
-      currentQuestionIndex = 0;
-      score = 0;
-      resultCard.classList.add("hidden");
-      quizCard.classList.remove("hidden");
-      loadQuestion();
-    };
-
-    // 초기화
-    loadQuestion();
+    animate();
   </script>
 </body>
 </html>
