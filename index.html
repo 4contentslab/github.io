@@ -1315,6 +1315,8 @@
     <div class="forest-stats">
       <span id="forestTotalCount">🌲 총 소원: 0 / 600개</span>
       <span>•</span>
+      <span id="onlineCount">🟢 접속 중: 1명</span>
+      <span>•</span>
       <span>나무당 최대 150개</span>
     </div>
     
@@ -1430,6 +1432,26 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const wishesRef = db.ref('wishes');
+
+    // 실시간 접속자 수 카운팅
+    const connectedRef = db.ref('.info/connected');
+    const onlineUsersRef = db.ref('online_users');
+    const onlineCountText = document.getElementById('onlineCount');
+
+    connectedRef.on('value', (snapshot) => {
+      if (snapshot.val() === true) {
+        const myPresenceRef = onlineUsersRef.push();
+        myPresenceRef.onDisconnect().remove();
+        myPresenceRef.set({ onlineAt: Date.now() });
+      }
+    });
+
+    onlineUsersRef.on('value', (snapshot) => {
+      const count = snapshot.numChildren() || 1;
+      if (onlineCountText) {
+        onlineCountText.textContent = `🟢 접속 중: ${count}명`;
+      }
+    });
 
     // UI 요소
     const nicknameInput = document.getElementById('nicknameInput');
