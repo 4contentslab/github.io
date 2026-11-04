@@ -2446,6 +2446,7 @@
 
       const facingAngle = Math.atan2(localZ, localX);
       ornamentObj.rotation.y = -facingAngle + Math.PI / 2;
+      ornamentObj.rotation.x = 0.15; // 바깥쪽으로 약 8도 기울여 나뭇가지에 걸린 느낌 연출
 
       ornamentObj.userData = { id, data: { ...data, treeIndex: treeIdx } };
       scene.add(ornamentObj);
