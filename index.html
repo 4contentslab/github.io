@@ -43,11 +43,12 @@
       z-index: 1;
     }
 
-    /* 좌측 상단 실시간 네온사인 전광판 */
+    /* 좌측 중앙 실시간 네온사인 전광판 (소원 목록) */
     .neon-board-container {
       position: absolute;
-      top: 18px;
+      top: 50%;
       left: 18px;
+      transform: translateY(-50%);
       z-index: 40;
       width: 320px;
       background: rgba(8, 15, 28, 0.9);
@@ -57,6 +58,11 @@
       padding: 10px 14px 12px;
       box-shadow: 0 0 18px rgba(0, 240, 255, 0.35), inset 0 0 12px rgba(0, 240, 255, 0.12);
       user-select: none;
+      display: none; /* 기본 상태 OFF */
+    }
+
+    .neon-board-container.open {
+      display: block !important;
     }
 
     .neon-board-title {
@@ -334,7 +340,7 @@
       text-align: right;
     }
 
-    /* 오르골 밑 3행 한국 실시간 라디오 플레이어 카드 */
+    /* 한국 실시간 라디오 플레이어 카드 */
     .radio-player-card {
       width: 300px;
       background: rgba(13, 22, 38, 0.94);
@@ -343,10 +349,14 @@
       border-radius: 18px;
       padding: 10px 12px 11px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.55);
-      display: flex;
+      display: none; /* 기본 상태 OFF */
       flex-direction: column;
       gap: 7px;
       user-select: none;
+    }
+    
+    .radio-player-card.open {
+      display: flex !important;
     }
 
     .radio-audio-bar-wrap {
@@ -523,7 +533,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
 
-      /* 피드백 메일 버튼 스타일 */
+    /* 피드백 메일 버튼 스타일 */
     .feedback-mail-btn {
       display: inline-flex;
       align-items: center;
@@ -1146,9 +1156,6 @@
     }
 
     @media (max-width: 768px) {
-      .neon-board-container {
-        display: none;
-      }
       .top-controls {
         top: 10px;
         right: 10px;
@@ -1188,7 +1195,7 @@
         width: 85px;
         padding-right: 6px;
       }
-      /* 모바일에서 라디오 기본 숨김 */
+      
       .radio-player-card {
         width: 260px;
         position: absolute;
@@ -1196,13 +1203,14 @@
         right: 0;
         z-index: 100 !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
-        display: none !important;
       }
 
-      /* 토글 버튼 클릭 시 열림 상태 */
-      .radio-player-card.mobile-open {
-        display: flex !important;
+      .neon-board-container {
+        width: 260px;
+        left: 10px;
+        z-index: 100 !important;
       }
+
       .radio-channel-btn {
         font-size: 10px;
         padding: 5px 4px;
@@ -1221,7 +1229,7 @@
   <canvas id="webgl-canvas"></canvas>
   <div id="hoverLabel">#소원</div>
 
-  <!-- 좌측 상단 실시간 네온사인 전광판 -->
+  <!-- 좌측 중앙 실시간 네온사인 전광판 (기본 숨김) -->
   <div class="neon-board-container">
     <div class="neon-board-title">
       <span class="neon-live-dot"></span>
@@ -1236,7 +1244,7 @@
     </div>
   </div>
 
-  <!-- 우측 상단 컨트롤 (눈 조절기 + BGM 버튼 + MP3 탐색 바 + 라디오 플레이어) -->
+  <!-- 우측 상단 컨트롤 (눈 조절기 + BGM 버튼 + 라디오 버튼 + 소원 목록 버튼) -->
   <div class="top-controls">
     <div class="top-controls-row">
       <div class="snow-control-card" title="눈송이 양 조절">
@@ -1244,25 +1252,31 @@
         <input type="range" min="300" max="4500" step="100" value="2000" class="snow-slider" id="snowSlider">
       </div>
 
-      <button class="bgm-btn" id="bgmBtn" title="오르골 MP3 음악 켜기/끄기">
+      <button class="bgm-btn" id="bgmBtn" title="배경음악 켜기/끄기">
         <span class="music-note-icon">🎵</span>
-        <span id="bgmBtnText">오르골 BGM</span>
+        <span id="bgmBtnText">배경음악</span>
       </button>
 
       <button class="bgm-btn" id="radioToggleBtn" title="실시간 라디오 열기/닫기">
         <span>📻</span>
         <span>라디오</span>
       </button>
+
+      <!-- 추가된 소원 목록 토글 버튼 -->
+      <button class="bgm-btn" id="tickerToggleBtn" title="소원 목록 열기/닫기">
+        <span>📋</span>
+        <span>소원 목록</span>
+      </button>
     </div>
 
-    <!-- 오르골 BGM 곡 위치 탐색 바 (시크바) -->
+    <!-- 배경음악 곡 위치 탐색 바 (시크바) -->
     <div class="bgm-progress-card" id="bgmProgressCard">
       <span class="bgm-progress-label">🎼 재생 바</span>
       <input type="range" min="0" max="100" value="0" step="0.1" class="bgm-seek-bar" id="bgmSeekBar" title="원하는 위치로 이동">
       <span class="bgm-time-text" id="bgmTimeText">0:00 / 0:00</span>
     </div>
 
-    <!-- 오르골 밑 한국 실시간 라디오 플레이어 -->
+    <!-- 한국 실시간 라디오 플레이어 (기본 숨김) -->
     <div class="radio-player-card" id="radioPlayerCard">
       <div class="radio-card-header">
         <div class="radio-title-wrap">
@@ -1739,7 +1753,7 @@
       if (!bgmAudio.paused) {
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
-        bgmBtnText.textContent = '오르골 BGM';
+        bgmBtnText.textContent = '배경음악';
       }
 
       radioChannelBtns.forEach(b => b.classList.remove('active'));
@@ -1818,7 +1832,7 @@
       if (!bgmAudio.paused) {
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
-        bgmBtnText.textContent = '오르골 BGM';
+        bgmBtnText.textContent = '배경음악';
       }
       radioLiveDot.classList.add('active');
       radioStatusText.classList.add('active');
@@ -1834,28 +1848,41 @@
         bgmAudio.play().then(() => {
           bgmBtn.classList.add('playing');
           bgmBtnText.textContent = 'BGM 켜짐';
-          showToast('🎵 오르골 음악이 재생됩니다.');
+          showToast('🎵 배경음악이 재생됩니다.');
         }).catch(err => {
           console.warn('BGM 재생 대기:', err);
         });
       } else {
         bgmAudio.pause();
         bgmBtn.classList.remove('playing');
-        bgmBtnText.textContent = '오르골 BGM';
+        bgmBtnText.textContent = '배경음악';
         showToast('BGM이 일시 정지되었습니다.');
       }
     });
 
+    // 라디오 토글 이벤트 등록
     if (radioToggleBtn && radioPlayerCard) {
       const toggleRadioCard = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        radioPlayerCard.classList.toggle('mobile-open');
+        radioPlayerCard.classList.toggle('open');
       };
-
       radioToggleBtn.addEventListener('click', toggleRadioCard);
       radioToggleBtn.addEventListener('touchend', toggleRadioCard);
     }  
+
+    // 소원 목록 토글 이벤트 등록
+    const tickerToggleBtn = document.getElementById('tickerToggleBtn');
+    const neonBoardContainer = document.querySelector('.neon-board-container');
+    if (tickerToggleBtn && neonBoardContainer) {
+      const toggleTickerCard = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        neonBoardContainer.classList.toggle('open');
+      };
+      tickerToggleBtn.addEventListener('click', toggleTickerCard);
+      tickerToggleBtn.addEventListener('touchend', toggleTickerCard);
+    }
 
     // Three.js 씬, 카메라 & 조명
     const canvas = document.getElementById('webgl-canvas');
@@ -2505,7 +2532,8 @@
         e.target.closest('.top-controls') || 
         e.target.closest('.neon-board-container') ||
         e.target.closest('#radioToggleBtn') ||
-        e.target.closest('#radioPlayerCard')
+        e.target.closest('#radioPlayerCard') ||
+        e.target.closest('#tickerToggleBtn')
       ) return;
 
       handleInteraction(e.clientX, e.clientY);
@@ -2674,7 +2702,6 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // ⬇️ 기존 <script> 태그 안 여기에 함수를 붙여넣으세요 ⬇️
     function sendFeedbackMail() {
       const email = "s2hurthealer@naver.com";
       const subject = encodeURIComponent("[3D 소원 숲] 수정 사항 및 피드백");
@@ -2689,12 +2716,6 @@
       window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     }
 
-      window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  
     // 렌더 애니메이션 루프
     const clock = new THREE.Clock();
     function animate() {
