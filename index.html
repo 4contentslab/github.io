@@ -1093,9 +1093,20 @@
         width: 85px;
         padding-right: 6px;
       }
+      /* 모바일에서 라디오 기본 숨김 */
       .radio-player-card {
-        width: 240px;
-        padding: 7px 10px;
+        width: 260px;
+        position: absolute;
+        top: 76px;
+        right: 0;
+        z-index: 100 !important; /* 클릭 및 터치 우선순위 보장 */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+        display: none !important;
+      }
+
+      /* 토글 버튼 클릭 시 열림 상태 */
+      .radio-player-card.mobile-open {
+        display: flex !important;
       }
       .radio-channel-btn {
         font-size: 10px;
@@ -1338,6 +1349,8 @@
     const neonTickerTrack = document.getElementById('neonTickerTrack');
     const lightnessSlider = document.getElementById('lightnessSlider');
     const lightnessDesc = document.getElementById('lightnessDesc');
+    const radioToggleBtn = document.getElementById('radioToggleBtn');
+    const radioPlayerCard = document.getElementById('radioPlayerCard');
 
     // 13종 오너먼트
     const ORNAMENTS = [
@@ -1698,7 +1711,17 @@
         showToast('BGM이 일시 정지되었습니다.');
       }
     });
+    // 모바일 라디오 카드 토글 (클릭 및 터치 모두 지원 + 3D 씬 터치 전파 차단)
+    if (radioToggleBtn && radioPlayerCard) {
+      const toggleRadioCard = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        radioPlayerCard.classList.toggle('mobile-open');
+      };
 
+      radioToggleBtn.addEventListener('click', toggleRadioCard);
+      radioToggleBtn.addEventListener('touchend', toggleRadioCard);
+    }  
     // Three.js 씬, 카메라 & 조명
     const canvas = document.getElementById('webgl-canvas');
     const scene = new THREE.Scene();
@@ -2343,9 +2366,17 @@
       }
     }
 
-    // PC 마우스 클릭 이벤트
+// PC 마우스 클릭 (라디오 버튼 및 플레이어 터치 예외 포함)
     window.addEventListener('click', (e) => {
-      if (e.target.closest('.dock-container') || e.target.closest('.modal-card') || e.target.closest('.top-controls') || e.target.closest('.neon-board-container')) return;
+      if (
+        e.target.closest('.dock-container') || 
+        e.target.closest('.modal-card') || 
+        e.target.closest('.top-controls') || 
+        e.target.closest('.neon-board-container') ||
+        e.target.closest('#radioToggleBtn') ||
+        e.target.closest('#radioPlayerCard')
+      ) return;
+
       handleInteraction(e.clientX, e.clientY);
     });
 
