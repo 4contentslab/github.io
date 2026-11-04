@@ -1910,11 +1910,20 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 + 0.02;
-    controls.minDistance = 15;
-    controls.maxDistance = 115;
+    controls.minDistance = 8;    // 기존 15에서 8로 완화하여 더 가까이 확대 가능
+    controls.maxDistance = 140;  // 숲 전체 조망을 위해 여유 확장
     controls.target.set(0, 10, 0);
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.4;
+    
+    // ⬇️ 아래 패닝(이동) 및 터치 옵션 추가
+    controls.enablePan = true;
+    controls.panSpeed = 1.0;
+    controls.screenSpacePanning = true; // 화면 기준 상하좌우 부드러운 평행 이동
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE, // 한 손가락: 궤도 회전
+      TWO: THREE.TOUCH.DOLLY_PAN // 두 손가락: 핀치 줌 + 화면 이동 동시 지원
+    };
 
     controls.addEventListener('start', () => { controls.autoRotate = false; });
 
@@ -2142,6 +2151,9 @@
       selectedTreeName.textContent = cfg.name;
       selectionRing.position.set(cfg.x, 0.08, cfg.z);
       selectionRing.scale.set(cfg.scale, cfg.scale, cfg.scale);
+      
+      // ⬇️ 선택한 나무의 중심으로 카메라 회전 축을 즉시 변경
+      controls.target.set(cfg.x, 10 * cfg.scale, cfg.z);
       if (notify) {
         showToast(`🌲 '${cfg.name}'이(가) 선택되었습니다!`);
       }
