@@ -1142,6 +1142,11 @@
         <span class="music-note-icon">🎵</span>
         <span id="bgmBtnText">오르골 BGM</span>
       </button>
+
+      <button class="bgm-btn" id="radioToggleBtn" title="실시간 라디오 열기/닫기">
+        <span>📻</span>
+        <span>라디오</span>
+      </button>
     </div>
 
     <!-- 오르골 BGM 곡 위치 탐색 바 (시크바) -->
@@ -2307,21 +2312,28 @@
       }
     }
 
-    function onPointerDown(e) {
-      if (e.target.closest('.dock-container') || e.target.closest('.modal-card') || e.target.closest('.top-controls') || e.target.closest('.neon-board-container')) return;
+    // 터치 & 클릭 상호작용 공통 로직
+    function handleInteraction(clientX, clientY) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
 
+      // 1. 소원 오너먼트 클릭 체크
       const intersects = raycaster.intersectObjects(ornamentMeshes, true);
       if (intersects.length > 0) {
         let topGroup = intersects[0].object;
         while (topGroup.parent && topGroup.parent !== scene) {
           topGroup = topGroup.parent;
         }
-        openModal(topGroup.userData.data);
-        return;
+        if (topGroup.userData && topGroup.userData.data) {
+          openModal(topGroup.userData.data);
+          return;
+        }
       }
 
+      // 2. 나무 본체 클릭 체크
       const treeIntersects = raycaster.intersectObjects(treeHitMeshes, false);
       if (treeIntersects.length > 0) {
         const hitTree = treeIntersects[0].object;
@@ -2331,8 +2343,40 @@
       }
     }
 
+    // PC 마우스 클릭 이벤트
+    window.addEventListener('click', (e) => {
+      if (e.target.closest('.dock-container') || e.target.closest('.modal-card') || e.target.closest('.top-controls') || e.target.closest('.neon-board-container')) return;
+      handleInteraction(e.clientX, e.clientY);
+    });
+
+    // 모바일 터치 제스처 처리 (드래그 회전과 탭 구분)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+    }, { passive: true });
+
+    renderer.domElement.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length === 1) {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const dist = Math.hypot(endX - touchStartX, endY - touchStartY);
+        const duration = Date.now() - touchStartTime;
+
+        // 이동 거리가 8px 이내이고 300ms 이내의 탭만 클릭으로 인정
+        if (dist < 8 && duration < 300) {
+          handleInteraction(endX, endY);
+        }
+      }
+    }, { passive: true });
+
     window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('click', onPointerDown);
 
     function extractKeyword(text) {
       const clean = text.replace(/[^\w\s가-힣]/g, ' ');
